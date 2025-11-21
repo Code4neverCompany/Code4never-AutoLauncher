@@ -7,7 +7,7 @@ Features Fluent Design UI, theme switching, and countdown timers.
 import sys
 from datetime import datetime
 from PySide6.QtWidgets import QApplication, QTableWidgetItem, QHeaderView, QSystemTrayIcon, QMenu, QWidget, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QEvent
 from PySide6.QtGui import QIcon, QAction
 from qfluentwidgets import (
     FluentWindow,
@@ -71,7 +71,18 @@ class AutolauncherApp(FluentWindow):
         # Apply saved theme
         self._apply_saved_theme()
         
+        # Setup theme enforcement timer (fix for "insane white" bug)
+        self.theme_timer = QTimer(self)
+        self.theme_timer.timeout.connect(self._enforce_theme)
+        self.theme_timer.start(3000) # Check every 3 seconds
+        
         logger.info("Autolauncher application initialized")
+    
+    def _enforce_theme(self):
+        """Periodically enforce the selected theme to prevent resets."""
+        # Only re-apply if we are visible to avoid unnecessary work
+        if self.isVisible():
+            self._apply_saved_theme()
     
     def _init_ui(self):
         """Initialize the user interface."""
@@ -143,10 +154,14 @@ class AutolauncherApp(FluentWindow):
         """Apply the saved theme preference."""
         saved_theme = self.settings_manager.get('theme', 'Light')
         
+        # Force re-application of theme
         if saved_theme == 'Dark':
             setTheme(Theme.DARK)
         else:
             setTheme(Theme.LIGHT)
+            
+        # Force repaint to ensure colors are correct
+        self.repaint()
         
         logger.debug(f"Applied saved theme: {saved_theme}")
     
@@ -575,6 +590,15 @@ class AutolauncherApp(FluentWindow):
         # Quit
         QApplication.quit()
     
+    def changeEvent(self, event):
+        """Handle system theme changes and enforce user preference."""
+        super().changeEvent(event)
+        
+        # Check for theme change events or window activation
+        # Adding ActivationChange to catch when window wakes up/gains focus
+        if event.type() in [QEvent.ThemeChange, QEvent.PaletteChange, QEvent.ActivationChange]:
+            self._apply_saved_theme()
+
     def closeEvent(self, event):
         """Handle window close event (minimize to tray instead of closing)."""
         
