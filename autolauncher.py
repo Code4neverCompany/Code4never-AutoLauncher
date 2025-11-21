@@ -20,12 +20,14 @@ from qfluentwidgets import (
     InfoBarPosition,
     MessageBox,
     Action,
-    TransparentToolButton
+    TransparentToolButton,
+    NavigationItemPosition
 )
 
 from task_manager import TaskManager, SettingsManager
 from task_dialog import TaskDialog
 from scheduler import TaskScheduler
+from settings_interface import SettingsInterface
 from logger import get_logger
 from config import (
     APP_NAME,
@@ -81,6 +83,10 @@ class AutolauncherApp(FluentWindow):
         
         # Create main interface
         self._create_main_widget()
+        
+        # Create settings interface
+        self.settingsInterface = SettingsInterface(self)
+        
         self._create_navigation()
         
         logger.debug("UI initialized")
@@ -96,6 +102,13 @@ class AutolauncherApp(FluentWindow):
             self.mainWidget,
             FluentIcon.CALENDAR,
             "Tasks"
+        )
+        
+        self.addSubInterface(
+            self.settingsInterface,
+            FluentIcon.SETTING,
+            "Settings",
+            position=NavigationItemPosition.BOTTOM
         )
     
     def _toggle_theme(self):

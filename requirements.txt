@@ -13,3 +13,6 @@ APScheduler>=3.10.0
 # Optional: PyInstaller for creating standalone executables
 # Uncomment the line below if you want to package the application
 # pyinstaller>=5.13.0
+
+# Requests - HTTP library for checking updates
+requests>=2.31.0
