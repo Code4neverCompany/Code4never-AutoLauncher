@@ -34,7 +34,9 @@ from config import (
     APP_NAME,
     DEFAULT_WINDOW_WIDTH,
     DEFAULT_WINDOW_HEIGHT,
-    TIMER_UPDATE_INTERVAL
+    TIMER_UPDATE_INTERVAL,
+    WINDOW_ICON_PATH,
+    TRAY_ICON_PATH
 )
 
 logger = get_logger(__name__)
@@ -94,6 +96,14 @@ class AutolauncherApp(FluentWindow):
             self.settings_manager.get('window_width', DEFAULT_WINDOW_WIDTH),
             self.settings_manager.get('window_height', DEFAULT_WINDOW_HEIGHT)
         )
+        
+        # Set window icon
+        try:
+            if WINDOW_ICON_PATH.exists():
+                self.setWindowIcon(QIcon(str(WINDOW_ICON_PATH)))
+                logger.debug(f"Window icon set from {WINDOW_ICON_PATH}")
+        except Exception as e:
+            logger.warning(f"Failed to load window icon: {e}")
         
         # Create main interface
         self._create_main_widget()
@@ -537,7 +547,19 @@ class AutolauncherApp(FluentWindow):
         
         # Create system tray icon
         self.tray_icon = QSystemTrayIcon(self)
-        self.tray_icon.setIcon(QIcon.fromTheme("application-x-executable"))  # Use default icon
+        
+        # Set custom icon with fallback
+        try:
+            if TRAY_ICON_PATH.exists():
+                self.tray_icon.setIcon(QIcon(str(TRAY_ICON_PATH)))
+                logger.debug(f"Tray icon set from {TRAY_ICON_PATH}")
+            else:
+                self.tray_icon.setIcon(QIcon.fromTheme("application-x-executable"))
+                logger.debug("Using fallback tray icon")
+        except Exception as e:
+            logger.warning(f"Failed to load tray icon: {e}")
+            self.tray_icon.setIcon(QIcon.fromTheme("application-x-executable"))
+        
         self.tray_icon.setToolTip(APP_NAME)
         
         # Create tray menu
@@ -617,9 +639,28 @@ class AutolauncherApp(FluentWindow):
 def main():
     """Main entry point for the application."""
     
+    # Windows-specific: Set App User Model ID
+    # This ensures Windows shows our custom icon and name in taskbar/Task Manager
+    # instead of grouping with Python
+    try:
+        import ctypes
+        myappid = 'code4never.autolauncher.desktop.1.0'  # Unique app ID
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        logger.debug("Windows App User Model ID set")
+    except Exception as e:
+        logger.warning(f"Failed to set App User Model ID: {e}")
+    
     # Create application
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
+    
+    # Set application-wide icon
+    try:
+        if WINDOW_ICON_PATH.exists():
+            app.setWindowIcon(QIcon(str(WINDOW_ICON_PATH)))
+            logger.debug("Application icon set")
+    except Exception as e:
+        logger.warning(f"Failed to set application icon: {e}")
     
     # Create and show main window
     window = AutolauncherApp()

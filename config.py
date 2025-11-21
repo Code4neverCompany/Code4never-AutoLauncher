@@ -9,20 +9,28 @@ from pathlib import Path
 # Application Information
 APP_NAME = "Autolauncher"
 APP_VERSION = "1.0.0"
-APP_AUTHOR = "Your Name"
+APP_AUTHOR = "Code4never"
 
 # Directories
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 LOGS_DIR = BASE_DIR / "logs"
+ASSETS_DIR = BASE_DIR / "assets"
 
 # Ensure directories exist
 DATA_DIR.mkdir(exist_ok=True)
 LOGS_DIR.mkdir(exist_ok=True)
+ASSETS_DIR.mkdir(exist_ok=True)
 
 # File Paths
 TASKS_FILE = DATA_DIR / "tasks.json"
 SETTINGS_FILE = DATA_DIR / "settings.json"
+
+# Icon Paths
+WINDOW_ICON_PATH = ASSETS_DIR / "icon.ico"
+TRAY_ICON_PATH = ASSETS_DIR / "icon.png"
+LOGO_DARK_PATH = ASSETS_DIR / "logo_dark.png"
+LOGO_LIGHT_PATH = ASSETS_DIR / "logo_light.png"
 
 # Logging Configuration
 # Debug mode can be enabled via environment variable: set DEBUG=1
