@@ -28,6 +28,7 @@ from task_manager import TaskManager, SettingsManager
 from task_dialog import TaskDialog
 from scheduler import TaskScheduler
 from settings_interface import SettingsInterface
+from update_manager import UpdateManager
 from logger import get_logger
 from config import (
     APP_NAME,
@@ -53,6 +54,7 @@ class AutolauncherApp(FluentWindow):
         self.task_manager = TaskManager()
         self.settings_manager = SettingsManager()
         self.scheduler = TaskScheduler()
+        self.update_manager = UpdateManager()
         
         # Load scheduled tasks into scheduler
         self._load_scheduled_tasks()
@@ -75,7 +77,8 @@ class AutolauncherApp(FluentWindow):
         """Initialize the user interface."""
         
         # Set window properties
-        self.setWindowTitle(APP_NAME)
+        version = self.update_manager.get_current_version()
+        self.setWindowTitle(f"{APP_NAME} (Alpha v{version})")
         self.resize(
             self.settings_manager.get('window_width', DEFAULT_WINDOW_WIDTH),
             self.settings_manager.get('window_height', DEFAULT_WINDOW_HEIGHT)

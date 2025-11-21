@@ -116,16 +116,27 @@ class SettingsInterface(ScrollArea):
     def _check_for_updates(self):
         """Check for updates and notify user."""
         self.checkUpdateCard.setEnabled(False)
-        self.checkUpdateCard.setText("Checking...")
+        self.checkUpdateCard.button.setText("Checking...")
         
         # Use a timer or thread in real app to avoid freezing, 
         # but for now we'll do it synchronously for simplicity as requested
-        update_info = self.update_manager.check_for_updates()
+        update_info, error_msg = self.update_manager.check_for_updates()
         
         self.checkUpdateCard.setEnabled(True)
-        self.checkUpdateCard.setText("Check for Updates")
+        self.checkUpdateCard.button.setText("Check for Updates")
         
-        if update_info:
+        if error_msg:
+            # Error occurred
+            InfoBar.error(
+                title="Update Check Failed",
+                content=error_msg,
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=5000,
+                parent=self
+            )
+        elif update_info:
             # Update available
             InfoBar.success(
                 title="Update Available",

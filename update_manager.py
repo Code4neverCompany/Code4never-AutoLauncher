@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 VERSION_FILE = "version_info.json"
 GITHUB_REPO = "Code4neverCompany/Code4never-AutoLauncher_AlphaVersion"
-GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases"
 
 class UpdateManager:
     """
@@ -50,40 +50,58 @@ class UpdateManager:
         """Get the full changelog."""
         return self.version_info.get("changelog", [])
 
-    def check_for_updates(self) -> Optional[Dict]:
+    def check_for_updates(self) -> tuple[Optional[Dict], Optional[str]]:
         """
-        Check GitHub for the latest release.
+        Check GitHub for the latest release (including pre-releases).
         
         Returns:
-            Dictionary with release info if update available, None otherwise.
+            Tuple containing:
+            - Dictionary with release info if update available, None otherwise.
+            - Error message string if check failed, None otherwise.
         """
         try:
             logger.info("Checking for updates...")
+            # Fetch list of releases (first one is the latest)
             response = requests.get(GITHUB_API_URL, timeout=5)
             
             if response.status_code == 200:
-                release_data = response.json()
-                latest_tag = release_data.get("tag_name", "").lstrip("v")
+                releases = response.json()
+                if not releases:
+                    logger.info("No releases found.")
+                    return None, None
+                    
+                # Get the most recent release (index 0)
+                latest_release = releases[0]
+                latest_tag = latest_release.get("tag_name", "").lstrip("v")
                 current_version = self.get_current_version()
+                
+                logger.debug(f"Latest GitHub release: {latest_tag}, Current: {current_version}")
                 
                 # Simple string comparison for now (can be improved with semver lib)
                 if latest_tag != current_version:
                     logger.info(f"New version found: {latest_tag}")
                     return {
                         "version": latest_tag,
-                        "url": release_data.get("html_url"),
-                        "body": release_data.get("body"),
-                        "assets": release_data.get("assets", [])
-                    }
+                        "url": latest_release.get("html_url"),
+                        "body": latest_release.get("body"),
+                        "assets": latest_release.get("assets", [])
+                    }, None
                 else:
                     logger.info("Application is up to date.")
+                    return None, None
+            elif response.status_code == 404:
+                msg = "Update source unavailable. The publisher may be working on a new version or release."
+                logger.warning(msg)
+                return None, msg
             else:
-                logger.warning(f"Failed to check updates. Status: {response.status_code}")
+                msg = f"Failed to check updates. Status: {response.status_code}"
+                logger.warning(msg)
+                return None, msg
                 
         except Exception as e:
-            logger.error(f"Error checking for updates: {e}")
-            
-        return None
+            msg = f"Error checking for updates: {str(e)}"
+            logger.error(msg)
+            return None, msg
 
     def open_download_page(self, url: str):
         """Open the release page in the default browser."""
