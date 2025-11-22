@@ -2,8 +2,6 @@ import os
 import sys
 import shutil
 import zipfile
-import winshell
-from win32com.client import Dispatch
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -19,8 +17,9 @@ def get_resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 def create_shortcut(target_path, shortcut_path, description="", icon_path=None):
-    """Create a Windows shortcut."""
+    """Create a Windows shortcut using win32com."""
     try:
+        from win32com.client import Dispatch
         shell = Dispatch('WScript.Shell')
         shortcut = shell.CreateShortCut(str(shortcut_path))
         shortcut.TargetPath = str(target_path)
@@ -33,6 +32,15 @@ def create_shortcut(target_path, shortcut_path, description="", icon_path=None):
     except Exception as e:
         print(f"Failed to create shortcut: {e}")
         return False
+
+def get_desktop_path():
+    """Get the desktop path using environment variables."""
+    return os.path.join(os.environ.get('USERPROFILE', os.path.expanduser('~')), 'Desktop')
+
+def get_start_menu_path():
+    """Get the start menu programs path using environment variables."""
+    appdata = os.environ.get('APPDATA', os.path.expanduser('~\\AppData\\Roaming'))
+    return os.path.join(appdata, 'Microsoft', 'Windows', 'Start Menu', 'Programs')
 
 def install():
     # Default install location
@@ -73,15 +81,39 @@ def install():
             messagebox.showerror("Error", "Installation package not found!")
             return
 
-        # Extract
+        # Extract - the ZIP contains the Autolauncher directory
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(install_dir)
+            # Extract to parent directory, then move contents
+            temp_extract = os.path.join(os.path.dirname(install_dir), '_temp_install')
+            zip_ref.extractall(temp_extract)
+            
+            # Move contents from temp_extract/Autolauncher to install_dir
+            extracted_dir = os.path.join(temp_extract, 'Autolauncher')
+            if os.path.exists(extracted_dir):
+                for item in os.listdir(extracted_dir):
+                    src = os.path.join(extracted_dir, item)
+                    dst = os.path.join(install_dir, item)
+                    if os.path.isdir(src):
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(src, dst)
+                shutil.rmtree(temp_extract)
+            else:
+                # Fallback: extract directly
+                for item in os.listdir(temp_extract):
+                    src = os.path.join(temp_extract, item)
+                    dst = os.path.join(install_dir, item)
+                    if os.path.isdir(src):
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(src, dst)
+                shutil.rmtree(temp_extract)
             
         # Create shortcuts
         exe_path = os.path.join(install_dir, "Autolauncher.exe")
         if os.path.exists(exe_path):
             # Desktop Shortcut
-            desktop = winshell.desktop()
+            desktop = get_desktop_path()
             create_shortcut(
                 exe_path, 
                 os.path.join(desktop, "Autolauncher.lnk"),
@@ -89,8 +121,8 @@ def install():
             )
             
             # Start Menu Shortcut
-            start_menu = winshell.start_menu()
-            programs_dir = os.path.join(start_menu, "Programs", "Autolauncher")
+            start_menu = get_start_menu_path()
+            programs_dir = os.path.join(start_menu, "Autolauncher")
             os.makedirs(programs_dir, exist_ok=True)
             create_shortcut(
                 exe_path,
