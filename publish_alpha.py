@@ -19,7 +19,7 @@ def load_version():
     return "0.0.0"
 
 def zip_project(version):
-    output_filename = f"Autolauncher_v{version}_Source.zip"
+    output_filename = f"c4n-AutoLauncher_v{version}_Source.zip"
     
     # Files/Dirs to exclude
     excludes = {
