@@ -1,7 +1,18 @@
 {
-    "version": "0.1.1",
-    "build_date": "2025-11-21",
+    "version": "1.0.0",
+    "build_date": "2025-11-22",
     "changelog": [
+        {
+            "version": "1.0.0",
+            "date": "2025-11-22",
+            "changes": [
+                "Major Release: v1.0.0",
+                "Implemented Directory-Based Update System",
+                "Added Setup.exe Installer",
+                "Improved Auto-Update Reliability (ZIP based)",
+                "Fixed missing dependencies in updates"
+            ]
+        },
         {
             "version": "0.1.1",
             "date": "2025-11-21",

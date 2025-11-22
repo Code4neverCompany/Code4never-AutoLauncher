@@ -5,8 +5,8 @@ Provides a modern Fluent Design dialog for adding and editing scheduled tasks.
 
 from datetime import datetime
 from pathlib import Path
-from PySide6.QtCore import Qt, QDate, QTime, QPoint
-from PySide6.QtWidgets import QFileDialog
+from PyQt5.QtCore import Qt, QDate, QTime, QPoint
+from PyQt5.QtWidgets import QFileDialog
 from qfluentwidgets import (
     MessageBoxBase,
     SubtitleLabel,
@@ -144,12 +144,19 @@ class TaskDialog(MessageBoxBase):
         # We want to select the .lnk file itself, not its target
         dialog.setOption(QFileDialog.DontResolveSymlinks, True)
         
-        if dialog.exec():
+        if dialog.exec_():  # PyQt5 uses exec_()
             selected_files = dialog.selectedFiles()
             if selected_files:
                 file_path = selected_files[0]
                 self.pathInput.setText(file_path)
                 logger.debug(f"Selected program: {file_path}")
+                
+                # Auto-fill name if empty
+                if not self.nameInput.text().strip():
+                    name = Path(file_path).stem
+                    # Capitalize first letter
+                    name = name[0].upper() + name[1:] if name else name
+                    self.nameInput.setText(name)
     
     def _load_task_data(self):
         """Load existing task data into the form fields."""
@@ -253,11 +260,8 @@ class TaskDialog(MessageBoxBase):
             # Check if click is on title area (top 60 pixels)
             if event.pos().y() < 60:
                 self.dragging = True
-                # Use globalPosition() for PySide6 6.10+
-                try:
-                    global_pos = event.globalPosition().toPoint()
-                except AttributeError:
-                    global_pos = event.globalPos()  # Fallback for older versions
+                # PyQt5 uses globalPos()
+                global_pos = event.globalPos()
                 self.drag_position = global_pos - self.frameGeometry().topLeft()
                 self.titleLabel.setCursor(Qt.ClosedHandCursor)
                 event.accept()
@@ -269,11 +273,8 @@ class TaskDialog(MessageBoxBase):
     def mouseMoveEvent(self, event):
         """Handle mouse move for window dragging."""
         if self.dragging and event.buttons() == Qt.LeftButton:
-            # Use globalPosition() for PySide6 6.10+
-            try:
-                global_pos = event.globalPosition().toPoint()
-            except AttributeError:
-                global_pos = event.globalPos()  # Fallback for older versions
+            # PyQt5 uses globalPos()
+            global_pos = event.globalPos()
             self.move(global_pos - self.drag_position)
             event.accept()
         else:
@@ -292,11 +293,8 @@ class TaskDialog(MessageBoxBase):
         """Handle mouse wheel for time adjustment."""
         # Check if mouse is over the time picker
         time_picker_geometry = self.timePicker.geometry()
-        # Use globalPosition() for PySide6 6.10+
-        try:
-            global_pos = event.globalPosition().toPoint()
-        except AttributeError:
-            global_pos = event.globalPos()  # Fallback for older versions
+        # PyQt5 uses globalPos()
+        global_pos = event.globalPos()
         mouse_pos = self.mapFromGlobal(global_pos)
         
         if time_picker_geometry.contains(mouse_pos):

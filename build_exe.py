@@ -110,18 +110,27 @@ def verify_executable():
     """Verify the built executable exists."""
     print_header("Verifying Build")
     
-    exe_path = Path("dist/Autolauncher.exe")
+    dist_dir = Path("dist/Autolauncher")
+    exe_path = dist_dir / "Autolauncher.exe"
     
+    if not dist_dir.exists():
+        print_error(f"Distribution directory not found at {dist_dir}")
+        return False
+
     if not exe_path.exists():
         print_error(f"Executable not found at {exe_path}")
         return False
     
-    # Get file size
-    size_bytes = exe_path.stat().st_size
-    size_mb = size_bytes / (1024 * 1024)
+    # Get directory size
+    total_size = 0
+    for path in dist_dir.rglob('*'):
+        if path.is_file():
+            total_size += path.stat().st_size
+            
+    size_mb = total_size / (1024 * 1024)
     
-    print_success(f"Executable created: {exe_path}")
-    print_info(f"File size: {size_mb:.2f} MB")
+    print_success(f"Build verified: {dist_dir}")
+    print_info(f"Total size: {size_mb:.2f} MB")
     
     return True
 
@@ -129,10 +138,10 @@ def create_release_package():
     """Create a ZIP package for distribution."""
     print_header("Creating Release Package")
     
-    exe_path = Path("dist/Autolauncher.exe")
+    dist_dir = Path("dist/Autolauncher")
     
-    if not exe_path.exists():
-        print_error("Cannot create package: executable not found")
+    if not dist_dir.exists():
+        print_error("Cannot create package: distribution directory not found")
         return False
     
     # Create release directory
@@ -146,13 +155,7 @@ def create_release_package():
     
     print_info(f"Creating package: {zip_path}")
     
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        zipf.write(exe_path, "Autolauncher.exe")
-        
-        # Add README if exists
-        readme_path = Path("README.md")
-        if readme_path.exists():
-            zipf.write(readme_path, "README.md")
+    shutil.make_archive(str(zip_path.with_suffix('')), 'zip', root_dir='dist', base_dir='Autolauncher')
     
     print_success(f"Release package created: {zip_path}")
     

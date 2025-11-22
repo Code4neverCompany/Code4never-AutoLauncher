@@ -5,10 +5,19 @@ Features Fluent Design UI, theme switching, and countdown timers.
 """
 
 import sys
+import os
+
 from datetime import datetime
-from PySide6.QtWidgets import QApplication, QTableWidgetItem, QHeaderView, QSystemTrayIcon, QMenu, QWidget, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy
-from PySide6.QtCore import Qt, QTimer, QEvent
-from PySide6.QtGui import QIcon, QAction
+from PyQt5.QtWidgets import QApplication, QTableWidgetItem, QHeaderView, QSystemTrayIcon, QMenu, QWidget, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, QAction
+from PyQt5.QtCore import Qt, QTimer, QEvent
+from PyQt5.QtGui import QIcon
+
+# Ensure QApplication exists before importing qfluentwidgets
+# This prevents "Must construct a QApplication before a QWidget" error
+if not QApplication.instance():
+    # Create a temporary QApplication for imports
+    _temp_app = QApplication(sys.argv)
+
 from qfluentwidgets import (
     FluentWindow,
     TableWidget,
@@ -79,12 +88,204 @@ class AutolauncherApp(FluentWindow):
         self.theme_timer.start(3000) # Check every 3 seconds
         
         logger.info("Autolauncher application initialized")
+        
+        # Setup auto-update after a short delay to ensure UI is fully ready
+        QTimer.singleShot(100, self._setup_auto_update)
     
     def _enforce_theme(self):
         """Periodically enforce the selected theme to prevent resets."""
         # Only re-apply if we are visible to avoid unnecessary work
         if self.isVisible():
             self._apply_saved_theme()
+    
+    def _setup_auto_update(self):
+        """Setup automatic update checking based on user settings."""
+        frequency = self.settings_manager.get('auto_update_frequency', 'startup')
+        
+        if frequency == 'disabled':
+            logger.info("Auto-update checks are disabled")
+            return
+        
+        # Store pending update info
+        self.pending_update_info = None
+        self.pending_update_path = None
+        
+        # Setup initial check on startup (delayed to avoid blocking UI)
+        if frequency in ['startup', 'daily', 'weekly']:
+            self.initial_update_timer = QTimer(self)
+            self.initial_update_timer.setSingleShot(True)
+            self.initial_update_timer.timeout.connect(self._perform_startup_update_check)
+            self.initial_update_timer.start(10000)  # 10 seconds after startup
+            logger.info("Scheduled startup update check in 10 seconds")
+        
+        # Setup periodic check timer for daily/weekly
+        if frequency in ['daily', 'weekly']:
+            self.periodic_update_timer = QTimer(self)
+            self.periodic_update_timer.timeout.connect(self._perform_periodic_update_check)
+            # Check every hour if we need to update
+            self.periodic_update_timer.start(3600000)  # 1 hour in milliseconds
+            logger.info(f"Enabled periodic update checking ({frequency})")
+    
+    def _perform_startup_update_check(self):
+        """Perform update check on startup."""
+        if self.update_manager.should_check_for_updates():
+            logger.info("Performing startup update check...")
+            self._perform_update_check()
+    
+    def _perform_periodic_update_check(self):
+        """Perform periodic update check if needed."""
+        if self.update_manager.should_check_for_updates():
+            logger.info("Performing periodic update check...")
+            self._perform_update_check()
+    
+    def _perform_update_check(self):
+        """Execute background update check."""
+        update_info, error = self.update_manager.check_for_updates_silent()
+        
+        if error:
+            # Silent failure for background checks
+            self.update_manager.save_last_check_time("error", None)
+            logger.debug(f"Update check failed: {error}")
+            return
+        
+        if update_info:
+            logger.info(f"Update available: {update_info['version']}")
+            self.update_manager.save_last_check_time("update_available", update_info['version'])
+            self._handle_update_available(update_info)
+        else:
+            logger.debug("No updates available")
+            self.update_manager.save_last_check_time("no_update", None)
+    
+    def _handle_update_available(self, update_info: dict):
+        """Handle when an update is available."""
+        version = update_info['version']
+        
+        # For Python script mode, just show notification and open browser
+        if not self.update_manager.is_executable:
+            InfoBar.info(
+                title=f"Update Available: v{version}",
+                content="Opening release page in browser...",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+            self.update_manager.open_download_page(update_info['url'])
+            return
+        
+        # For executable mode, automatically download
+        exe_asset = update_info.get('exe_asset')
+        if not exe_asset:
+            logger.warning("No .exe asset found in release")
+            return
+        
+        # Start automatic download
+        logger.info("Starting automatic update download...")
+        self.pending_update_info = update_info
+        
+        # Show download notification
+        InfoBar.info(
+            title=f"Downloading Update v{version}",
+            content="Download in progress...",
+            orient=Qt.Horizontal,
+            isClosable=False,
+            position=InfoBarPosition.TOP,
+            duration=5000,
+            parent=self
+        )
+        
+        # Perform download in background (simplified - in production use QThread)
+        download_path = self.update_manager.download_update(exe_asset)
+        
+        if download_path:
+            self.pending_update_path = download_path
+            self._handle_download_complete(version)
+        else:
+            InfoBar.error(
+                title="Download Failed",
+                content="Could not download update. Please try again later.",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+    
+    def _handle_download_complete(self, version: str):
+        """Handle when update download completes."""
+        logger.info("Update download completed")
+        
+        # Check if tasks are running
+        if self.scheduler.has_running_tasks():
+            # Defer installation
+            logger.info("Tasks are running, deferring installation...")
+            InfoBar.warning(
+                title="Update Downloaded",
+                content="Will install when tasks complete. Close this to cancel.",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=-1,  # Persist until closed
+                parent=self
+            )
+            
+            # Setup monitor to check when tasks complete
+            self.restart_check_timer = QTimer(self)
+            self.restart_check_timer.timeout.connect(self._check_and_install_update)
+            self.restart_check_timer.start(30000)  # Check every 30 seconds
+        else:
+            # No tasks running, install immediately with countdown
+            self._install_update_with_countdown(version)
+    
+    def _check_and_install_update(self):
+        """Check if tasks completed and install update."""
+        if not self.scheduler.has_running_tasks():
+            logger.info("Tasks completed, proceeding with update installation")
+            self.restart_check_timer.stop()
+            self._install_update_with_countdown(self.pending_update_info['version'])
+    
+    def _install_update_with_countdown(self, version: str):
+        """Install update after showing countdown."""
+        # Show countdown notification
+        InfoBar.success(
+            title="Installing Update",
+            content=f"Restarting in 5 seconds to install v{version}...",
+            orient=Qt.Horizontal,
+            isClosable=False,
+            position=InfoBarPosition.TOP,
+            duration=5000,
+            parent=self
+        )
+        
+        # Schedule installation after 5 seconds
+        QTimer.singleShot(5000, self._install_and_restart)
+    
+    def _install_and_restart(self):
+        """Install update and restart application."""
+        if not self.pending_update_path:
+            logger.error("No pending update path found")
+            return
+        
+        logger.info("Installing update and restarting...")
+        
+        # Shutdown scheduler
+        self.scheduler.shutdown()
+        
+        # Install and restart
+        if self.update_manager.install_update_and_restart(self.pending_update_path):
+            # Exit application (batch script will handle restart)
+            QApplication.quit()
+        else:
+            InfoBar.error(
+                title="Installation Failed",
+                content="Could not install update. Please try manual installation.",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=5000,
+                parent=self
+            )
     
     def _init_ui(self):
         """Initialize the user interface."""
@@ -618,7 +819,7 @@ class AutolauncherApp(FluentWindow):
         
         # Check for theme change events or window activation
         # Adding ActivationChange to catch when window wakes up/gains focus
-        if event.type() in [QEvent.ThemeChange, QEvent.PaletteChange, QEvent.ActivationChange]:
+        if event.type() in [QEvent.PaletteChange, QEvent.ActivationChange]:
             self._apply_saved_theme()
 
     def closeEvent(self, event):
@@ -650,24 +851,13 @@ def main():
     except Exception as e:
         logger.warning(f"Failed to set App User Model ID: {e}")
     
-    # Create application
-    app = QApplication(sys.argv)
-    app.setApplicationName(APP_NAME)
-    
-    # Set application-wide icon
-    try:
-        if WINDOW_ICON_PATH.exists():
-            app.setWindowIcon(QIcon(str(WINDOW_ICON_PATH)))
-            logger.debug("Application icon set")
-    except Exception as e:
-        logger.warning(f"Failed to set application icon: {e}")
-    
     # Create and show main window
     window = AutolauncherApp()
     window.show()
     
     # Run event loop
-    sys.exit(app.exec())
+    app = QApplication.instance()
+    sys.exit(app.exec_())  # PyQt5 uses exec_()
 
 
 if __name__ == "__main__":

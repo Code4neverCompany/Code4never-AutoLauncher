@@ -18,12 +18,13 @@ added_files = [
     ('data/*.json', 'data'), # Include existing JSON data files
 ]
 
-# Hidden imports for PySide6 and qfluentwidgets
+# Hidden imports for PyQt5 and qfluentwidgets
 hiddenimports = [
-    'PySide6.QtCore',
-    'PySide6.QtGui',
-    'PySide6.QtWidgets',
-    'PySide6.QtSvg',
+    'PyQt5.QtCore',
+    'PyQt5.QtGui',
+    'PyQt5.QtWidgets',
+    'PyQt5.QtSvg',
+    'requests',
     'qfluentwidgets',
     'qfluentwidgets.components',
     'qfluentwidgets.common',
@@ -47,7 +48,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['PySide6', 'PyQt6', 'PySide2', 'tkinter'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -59,23 +60,29 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='Autolauncher',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,  # No console window (GUI app)
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/icon.ico',  # Application icon
-    version_file=None,
+    icon='assets/icon.ico',
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='Autolauncher',
 )

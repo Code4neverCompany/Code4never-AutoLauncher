@@ -3,6 +3,7 @@ Configuration module for Autolauncher application.
 Contains application-wide settings, paths, and debug mode configuration.
 """
 
+import sys
 import os
 from pathlib import Path
 
@@ -12,7 +13,12 @@ APP_VERSION = "1.0.0"
 APP_AUTHOR = "Code4never"
 
 # Directories
-BASE_DIR = Path(__file__).parent
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable
+    BASE_DIR = Path(sys.executable).parent
+else:
+    # Running as Python script
+    BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 LOGS_DIR = BASE_DIR / "logs"
 ASSETS_DIR = BASE_DIR / "assets"
