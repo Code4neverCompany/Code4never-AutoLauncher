@@ -5,20 +5,6 @@
 - Improved Auto-Update Reliability (ZIP based)
 - Fixed missing dependencies in updates
 
-## Changes for version 1.0.0
-- Major Release: v1.0.0
-- Implemented Directory-Based Update System
-- Added Setup.exe Installer
-- Improved Auto-Update Reliability (ZIP based)
-- Fixed missing dependencies in updates
-
-## Changes for version 1.0.0
-- Major Release: v1.0.0
-- Implemented Directory-Based Update System
-- Added Setup.exe Installer
-- Improved Auto-Update Reliability (ZIP based)
-- Fixed missing dependencies in updates
-
 # Auto-Update System - Documentation
 
 This document explains the enhanced auto-update system for Autolauncher.
