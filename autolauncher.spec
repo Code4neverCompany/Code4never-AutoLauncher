@@ -16,6 +16,7 @@ qfluentwidgets_datas = collect_data_files('qfluentwidgets')
 added_files = [
     ('assets/*', 'assets'),  # Include all assets
     ('data/*.json', 'data'), # Include existing JSON data files
+    ('version_info.json', '.'), # Include version info in root
 ]
 
 # Hidden imports for PyQt5 and qfluentwidgets
