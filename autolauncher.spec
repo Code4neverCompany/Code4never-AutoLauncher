@@ -12,12 +12,22 @@ block_cipher = None
 # Collect all qfluentwidgets data files
 qfluentwidgets_datas = collect_data_files('qfluentwidgets')
 
+# Collect all asset files explicitly
+import glob
+asset_files = []
+for file in glob.glob('assets/**/*', recursive=True):
+    if os.path.isfile(file):
+        # Keep directory structure
+        asset_files.append((file, os.path.dirname(file)))
+
 # Define data files to include
 added_files = [
-    ('assets/*', 'assets'),  # Include all assets
     ('data/*.json', 'data'), # Include existing JSON data files
     ('version_info.json', '.'), # Include version info in root
-]
+] + asset_files
+
+# Combine all data files
+all_datas = added_files + qfluentwidgets_datas
 
 # Hidden imports for PyQt5 and qfluentwidgets
 hiddenimports = [
@@ -44,7 +54,7 @@ a = Analysis(
     ['autolauncher.py'],
     pathex=[],
     binaries=[],
-    datas=added_files + qfluentwidgets_datas,
+    datas=all_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
