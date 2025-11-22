@@ -148,8 +148,12 @@ def create_release_package():
     release_dir = Path("release")
     release_dir.mkdir(exist_ok=True)
     
-    # Generate package name (version only, no timestamp)
-    zip_name = f"Autolauncher_v1.0.0.zip"
+    # Read version from config.py
+    import config
+    version = config.APP_VERSION
+    
+    # Generate package name with actual version and new app name
+    zip_name = f"c4n-AutoLauncher_v{version}.zip"
     zip_path = release_dir / zip_name
     
     print_info(f"Creating package: {zip_path}")
