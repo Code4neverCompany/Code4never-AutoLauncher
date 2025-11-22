@@ -13,15 +13,28 @@ APP_VERSION = "1.0.1"
 APP_AUTHOR = "Code4never"
 
 # Directories
+# Directories
 if getattr(sys, 'frozen', False):
     # Running as compiled executable
+    # PyInstaller 6.x puts resources in _internal folder
     BASE_DIR = Path(sys.executable).parent
+    INTERNAL_DIR = BASE_DIR / "_internal"
+    
+    # Check if _internal exists (PyInstaller 6.x), otherwise use BASE_DIR
+    if INTERNAL_DIR.exists():
+        DATA_DIR = INTERNAL_DIR / "data"
+        ASSETS_DIR = INTERNAL_DIR / "assets"
+    else:
+        DATA_DIR = BASE_DIR / "data"
+        ASSETS_DIR = BASE_DIR / "assets"
+    
+    LOGS_DIR = BASE_DIR / "logs"
 else:
     # Running as Python script
     BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / "data"
-LOGS_DIR = BASE_DIR / "logs"
-ASSETS_DIR = BASE_DIR / "assets"
+    DATA_DIR = BASE_DIR / "data"
+    LOGS_DIR = BASE_DIR / "logs"
+    ASSETS_DIR = BASE_DIR / "assets"
 
 # Ensure directories exist
 DATA_DIR.mkdir(exist_ok=True)

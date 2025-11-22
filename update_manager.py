@@ -41,8 +41,20 @@ class UpdateManager:
     def _load_version_info(self) -> Dict:
         """Load version info from local JSON file."""
         try:
-            if os.path.exists(VERSION_FILE):
-                with open(VERSION_FILE, 'r') as f:
+            # PyInstaller 6.x puts data files in _internal folder
+            if getattr(sys, 'frozen', False):
+                # Running as executable - check _internal folder
+                exe_dir = os.path.dirname(sys.executable)
+                version_file = os.path.join(exe_dir, '_internal', VERSION_FILE)
+                if not os.path.exists(version_file):
+                    # Fallback to root for older builds
+                    version_file = os.path.join(exe_dir, VERSION_FILE)
+            else:
+                # Running as script - use current directory
+                version_file = VERSION_FILE
+            
+            if os.path.exists(version_file):
+                with open(version_file, 'r') as f:
                     return json.load(f)
         except Exception as e:
             logger.error(f"Failed to load version info: {e}")
