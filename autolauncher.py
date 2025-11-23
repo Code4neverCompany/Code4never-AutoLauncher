@@ -103,29 +103,29 @@ class AutolauncherApp(FluentWindow):
         """Setup automatic update checking based on user settings."""
         frequency = self.settings_manager.get('auto_update_frequency', 'startup')
         
-        if frequency == 'disabled':
-            logger.info("Auto-update checks are disabled")
+        if frequency == 'manual':
+            logger.info("Auto-update checks are disabled (manual mode)")
             return
         
         # Store pending update info
         self.pending_update_info = None
         self.pending_update_path = None
         
-        # Setup initial check on startup (delayed to avoid blocking UI)
-        if frequency in ['startup', 'daily', 'weekly']:
+        # Setup initial check on startup (for startup and automatic modes)
+        if frequency in ['startup', 'automatic']:
             self.initial_update_timer = QTimer(self)
             self.initial_update_timer.setSingleShot(True)
             self.initial_update_timer.timeout.connect(self._perform_startup_update_check)
             self.initial_update_timer.start(10000)  # 10 seconds after startup
             logger.info("Scheduled startup update check in 10 seconds")
         
-        # Setup periodic check timer for daily/weekly
-        if frequency in ['daily', 'weekly']:
+        # Setup periodic check timer for automatic mode only
+        if frequency == 'automatic':
             self.periodic_update_timer = QTimer(self)
             self.periodic_update_timer.timeout.connect(self._perform_periodic_update_check)
-            # Check every hour if we need to update
-            self.periodic_update_timer.start(3600000)  # 1 hour in milliseconds
-            logger.info(f"Enabled periodic update checking ({frequency})")
+            # Check every 2 minutes with ETag efficiency
+            self.periodic_update_timer.start(120000)  # 2 minutes in milliseconds
+            logger.info("Enabled automatic update checking every 2 minutes (ETag-based)")
     
     def _perform_startup_update_check(self):
         """Perform update check on startup."""
@@ -134,10 +134,9 @@ class AutolauncherApp(FluentWindow):
             self._perform_update_check()
     
     def _perform_periodic_update_check(self):
-        """Perform periodic update check if needed."""
-        if self.update_manager.should_check_for_updates():
-            logger.info("Performing periodic update check...")
-            self._perform_update_check()
+        """Perform periodic update check (always checks, ignores frequency restrictions)."""
+        logger.info("Performing periodic update check...")
+        self._perform_update_check()
     
     def _perform_update_check(self):
         """Execute background update check."""
@@ -160,6 +159,10 @@ class AutolauncherApp(FluentWindow):
     def _handle_update_available(self, update_info: dict):
         """Handle when an update is available."""
         version = update_info['version']
+        
+        # Update the About interface dashboard
+        if hasattr(self, 'aboutInterface') and hasattr(self.aboutInterface, 'dashboard'):
+            self.aboutInterface.dashboard.show_update_available(update_info)
         
         # For Python script mode, just show notification and open browser
         if not self.update_manager.is_executable:
@@ -197,7 +200,7 @@ class AutolauncherApp(FluentWindow):
         # Show prominent notification with action to view in About page
         info_bar = InfoBar.success(
             title=f"Update Available: v{version}",
-            content="A new version is ready to download. Click 'View Details' to install.",
+            content="A new version is ready. Click 'View Details' to update.",
             orient=Qt.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,

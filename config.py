@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Application Information
 APP_NAME = "c4n-AutoLauncher"
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.0.4"
 APP_AUTHOR = "Code4never"
 
 # Directories
@@ -71,8 +71,8 @@ MAX_LOG_SIZE = 5 * 1024 * 1024  # 5 MB
 BACKUP_COUNT = 3  # Keep 3 backup log files
 
 # UI Settings
-DEFAULT_WINDOW_WIDTH = 900
-DEFAULT_WINDOW_HEIGHT = 600
+DEFAULT_WINDOW_WIDTH = 1100
+DEFAULT_WINDOW_HEIGHT = 650
 TIMER_UPDATE_INTERVAL = 1000  # Update countdown every 1 second (in milliseconds)
 
 # Theme Settings

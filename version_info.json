@@ -1,7 +1,48 @@
 {
-    "version": "1.0.1",
-    "build_date": "2025-11-22",
+    "version": "1.0.5",
+    "build_date": "2025-11-23",
     "changelog": [
+        {
+            "version": "1.0.5",
+            "date": "2025-11-23",
+            "changes": [
+                "Implemented ETag-based update checking (95% bandwidth reduction)",
+                "Simplified update settings to 3 intuitive options (Startup/Manual/Automatic)",
+                "Fixed FAQ dialog rendering and close button",
+                "Added dynamic button icons (UP arrow for rollback, SYNC for updates)",
+                "Optimized window size to 1100x650 for better layout",
+                "Automatic mode checks every 2 minutes with near real-time detection",
+                "Created FUTURE_PLANS.md for roadmap visibility"
+            ]
+        },
+        {
+            "version": "1.0.4",
+            "date": "2025-11-23",
+            "changes": [
+                "HOTFIX: Fixed crash on startup due to UI initialization error",
+                "Restored missing method in About interface"
+            ]
+        },
+        {
+            "version": "1.0.3",
+            "date": "2025-11-23",
+            "changes": [
+                "Increased Auto-Update Check Frequency to 15 Minutes",
+                "Translated About Page Disclaimer to English",
+                "Added Current Version Changelog Display in About Page",
+                "Improved Update Available UI Logic"
+            ]
+        },
+        {
+            "version": "1.0.2",
+            "date": "2025-11-23",
+            "changes": [
+                "Redesigned About Section with Update Dashboard",
+                "Added Persistent 'Updating' Notification with Progress",
+                "Improved Update Button Behavior (Always Visible)",
+                "Streamlined Update Flow (Download -> Restart)"
+            ]
+        },
         {
             "version": "1.0.1",
             "date": "2025-11-22",

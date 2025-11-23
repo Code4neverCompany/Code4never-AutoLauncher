@@ -10,7 +10,7 @@ def create_installer():
     
     # Find latest release zip
     release_dir = Path("release")
-    zips = list(release_dir.glob("Autolauncher_v*.zip"))
+    zips = list(release_dir.glob("c4n-AutoLauncher_v*.zip"))
     
     if not zips:
         print("No release ZIP found in release/ directory. Build the app first.")
@@ -59,8 +59,8 @@ def create_installer():
         # Move the setup exe to release folder
         dist_setup = Path("dist/Autolauncher_Setup.exe")
         if dist_setup.exists():
-            # Extract version from zip name (e.g., Autolauncher_v1.0.0.zip -> v1.0.0)
-            version_part = latest_zip.stem.replace('Autolauncher_', '')
+            # Extract version from zip name (e.g., c4n-AutoLauncher_v1.0.0.zip -> v1.0.0)
+            version_part = latest_zip.stem.replace('c4n-AutoLauncher_', '')
             target_name = f"Autolauncher_Setup_{version_part}.exe"
             target_path = release_dir / target_name
             shutil.move(str(dist_setup), str(target_path))

@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 
 VERSION_FILE = "version_info.json"
 LAST_CHECK_FILE = "last_update_check.json"
+ETAG_CACHE_FILE = "etag_cache.json"
 GITHUB_REPO = "Code4neverCompany/Code4never-AutoLauncher_AlphaVersion"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases"
 
@@ -35,6 +36,7 @@ class UpdateManager:
         """Initialize the UpdateManager."""
         self.version_info = self._load_version_info()
         self.is_executable = getattr(sys, 'frozen', False)
+        self.etag_cache = self._load_etag_cache()
         logger.info(f"UpdateManager initialized. Current Version: {self.get_current_version()}")
         logger.info(f"Running as: {'Executable' if self.is_executable else 'Python Script'}")
 
@@ -74,27 +76,53 @@ class UpdateManager:
         """Get the full changelog."""
         return self.version_info.get("changelog", [])
     
+    def _load_etag_cache(self) -> Dict:
+        """Load ETag cache from file."""
+        try:
+            if os.path.exists(ETAG_CACHE_FILE):
+                with open(ETAG_CACHE_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.debug(f"Could not load ETag cache: {e}")
+        return {}
+    
+    def _save_etag_cache(self):
+        """Save ETag cache to file."""
+        try:
+            with open(ETAG_CACHE_FILE, 'w') as f:
+                json.dump(self.etag_cache, f, indent=2)
+        except Exception as e:
+            logger.warning(f"Could not save ETag cache: {e}")
+    
     def _compare_versions(self, version1: str, version2: str) -> int:
         """
-        Compare two version strings.
+        Compare two version strings (supports 1.0.0 and 1.0.0a).
         
         Returns:
             1 if version1 > version2
             0 if version1 == version2
             -1 if version1 < version2
         """
-        def version_tuple(v):
-            # Remove 'v' prefix and split
+        import re
+        
+        def parse_version(v):
+            # Remove 'v' prefix
             v = v.lstrip('v')
-            parts = v.split('.')
-            # Handle alpha/beta versions (e.g., "0.1.1-alpha")
-            if '-' in parts[-1]:
-                parts[-1] = parts[-1].split('-')[0]
-            return tuple(int(x) for x in parts)
+            # Split into main parts and potential suffix
+            # Matches 1.0.3, 1.0.3a, 1.0.3-alpha, etc.
+            match = re.match(r"(\d+)\.(\d+)\.(\d+)([a-z]?)", v)
+            if match:
+                major, minor, patch, suffix = match.groups()
+                # Convert suffix to a number for comparison: '' -> 0, 'a' -> 1, 'b' -> 2
+                suffix_val = 0
+                if suffix:
+                    suffix_val = ord(suffix) - 96 # 'a' is 97
+                return (int(major), int(minor), int(patch), suffix_val)
+            return (0, 0, 0, 0)
         
         try:
-            v1_tuple = version_tuple(version1)
-            v2_tuple = version_tuple(version2)
+            v1_tuple = parse_version(version1)
+            v2_tuple = parse_version(version2)
             
             if v1_tuple > v2_tuple:
                 return 1
@@ -113,7 +141,7 @@ class UpdateManager:
 
     def check_for_updates(self) -> tuple[Optional[Dict], Optional[str]]:
         """
-        Check GitHub for the latest release (including pre-releases).
+        Check GitHub for the latest release using ETag for efficiency.
         
         Returns:
             Tuple containing:
@@ -122,44 +150,38 @@ class UpdateManager:
         """
         try:
             logger.info("Checking for updates...")
-            # Fetch list of releases (first one is the latest)
-            response = requests.get(GITHUB_API_URL, timeout=10)
             
-            if response.status_code == 200:
+            # Prepare headers with ETag if available
+            headers = {}
+            etag = self.etag_cache.get('releases_etag')
+            if etag:
+                headers['If-None-Match'] = etag
+                logger.debug(f"Using cached ETag: {etag[:20]}...")
+            
+            # Fetch list of releases
+            response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
+            
+            # Handle 304 Not Modified - no changes since last check
+            if response.status_code == 304:
+                logger.info("No changes detected (304 Not Modified)")
+                # Use cached data if available
+                if 'last_releases_data' in self.etag_cache:
+                    releases = self.etag_cache['last_releases_data']
+                else:
+                    return None, None
+            elif response.status_code == 200:
                 releases = response.json()
+                
+                # Cache the ETag and response data
+                new_etag = response.headers.get('ETag')
+                if new_etag:
+                    self.etag_cache['releases_etag'] = new_etag
+                    self.etag_cache['last_releases_data'] = releases
+                    self._save_etag_cache()
+                    logger.debug(f"Cached new ETag: {new_etag[:20]}...")
+                
                 if not releases:
                     logger.info("No releases found.")
-                    return None, None
-                    
-                # Get the most recent release (index 0)
-                latest_release = releases[0]
-                latest_tag = latest_release.get("tag_name", "").lstrip("v")
-                current_version = self.get_current_version()
-                
-                logger.debug(f"Latest GitHub release: {latest_tag}, Current: {current_version}")
-                
-                # Use semantic version comparison
-                if self._compare_versions(latest_tag, current_version) > 0:
-                    logger.info(f"New version found: {latest_tag}")
-                    
-                    # Find the .zip asset in the release
-                    assets = latest_release.get("assets", [])
-                    update_asset = None
-                    for asset in assets:
-                        if asset.get("name", "").endswith(".zip"):
-                            update_asset = asset
-                            break
-                    
-                    return {
-                        "version": latest_tag,
-                        "url": latest_release.get("html_url"),
-                        "body": latest_release.get("body"),
-                        "assets": assets,
-                        "exe_asset": update_asset, # Keeping key name for compatibility, but it's a zip now
-                        "can_auto_update": update_asset is not None and self.is_executable
-                    }, None
-                else:
-                    logger.info("Application is up to date.")
                     return None, None
             elif response.status_code == 404:
                 msg = "Update source unavailable. The publisher may be working on a new version or release."
@@ -169,11 +191,95 @@ class UpdateManager:
                 msg = f"Failed to check updates. Status: {response.status_code}"
                 logger.warning(msg)
                 return None, msg
+            
+            # Process releases (same logic as before)
+            latest_release = releases[0]
+            latest_tag = latest_release.get("tag_name", "").lstrip("v")
+            current_version = self.get_current_version()
+            
+            logger.debug(f"Latest GitHub release: {latest_tag}, Current: {current_version}")
+            
+            # Use semantic version comparison
+            if self._compare_versions(latest_tag, current_version) > 0:
+                logger.info(f"New version found: {latest_tag}")
+                
+                # Find the .zip asset in the release
+                assets = latest_release.get("assets", [])
+                update_asset = None
+                for asset in assets:
+                    if asset.get("name", "").endswith(".zip"):
+                        update_asset = asset
+                        break
+                
+                return {
+                    "version": latest_tag,
+                    "url": latest_release.get("html_url"),
+                    "body": latest_release.get("body"),
+                    "assets": assets,
+                    "exe_asset": update_asset,
+                    "can_auto_update": update_asset is not None and self.is_executable
+                }, None
+            else:
+                logger.info("Application is up to date.")
+                return None, None
                 
         except Exception as e:
             msg = f"Error checking for updates: {str(e)}"
             logger.error(msg)
             return None, msg
+
+    def get_all_releases(self, include_prereleases: bool = True) -> List[Dict]:
+        """
+        Get all available releases from GitHub.
+        
+        Args:
+            include_prereleases: Whether to include pre-release versions
+            
+        Returns:
+            List of release dictionaries with version, date, and notes
+        """
+        try:
+            logger.info("Fetching all releases from GitHub...")
+            response = requests.get(GITHUB_API_URL, timeout=10)
+            
+            if response.status_code == 200:
+                releases = response.json()
+                
+                result = []
+                for release in releases:
+                    # Skip prereleases if requested
+                    if not include_prereleases and release.get("prerelease", False):
+                        continue
+                    
+                    version = release.get("tag_name", "").lstrip("v")
+                    
+                    # Find ZIP asset for this release
+                    assets = release.get("assets", [])
+                    zip_asset = None
+                    for asset in assets:
+                        if asset.get("name", "").endswith(".zip"):
+                            zip_asset = asset
+                            break
+                    
+                    result.append({
+                        "version": version,
+                        "date": release.get("published_at", "Unknown"),
+                        "body": release.get("body", ""),
+                        "prerelease": release.get("prerelease", False),
+                        "url": release.get("html_url", ""),
+                        "assets": assets,
+                        "zip_asset": zip_asset
+                    })
+                
+                logger.info(f"Found {len(result)} releases")
+                return result
+            else:
+                logger.warning(f"Failed to fetch releases: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error fetching all releases: {e}")
+            return []
 
     def check_for_updates_silent(self) -> tuple[Optional[Dict], Optional[str]]:
         """

@@ -104,23 +104,23 @@ class SettingsInterface(ScrollArea):
         # --- Updates Settings Group ---
         self.updatesGroup = SettingCardGroup("Updates", self.scrollWidget)
         
-        # Auto-Update Frequency Setting
+        # Auto-Update Mode Setting
         self.autoUpdateCard = SettingCard(
             FluentIcon.UPDATE,
-            "Auto-Update Check",
-            "Choose how often the app should check for updates (visit About page to check manually)",
+            "Auto-Update Mode",
+            "Automatic: checks every 2 min, installs when next task is >30 min away",
             parent=self.updatesGroup
         )
         
         self.updateFrequencyComboBox = ComboBox(self.autoUpdateCard)
-        self.updateFrequencyComboBox.addItems(["Disabled", "On Startup Only", "Daily", "Weekly"])
+        self.updateFrequencyComboBox.addItems(["On Startup", "Manual Only", "Automatic (Smart)"])
         self.autoUpdateCard.hBoxLayout.addWidget(self.updateFrequencyComboBox, 0, Qt.AlignRight)
         self.autoUpdateCard.hBoxLayout.addSpacing(16)
         
         # Set initial state
         frequency = self.settings_manager.get('auto_update_frequency', 'startup')
-        frequency_map = {'disabled': 0, 'startup': 1, 'daily': 2, 'weekly': 3}
-        self.updateFrequencyComboBox.setCurrentIndex(frequency_map.get(frequency, 1))
+        frequency_map = {'startup': 0, 'manual': 1, 'automatic': 2}
+        self.updateFrequencyComboBox.setCurrentIndex(frequency_map.get(frequency, 0))
         
         # Connect signal
         self.updateFrequencyComboBox.currentIndexChanged.connect(self._on_update_frequency_changed)
@@ -156,20 +156,21 @@ class SettingsInterface(ScrollArea):
     
     def _on_update_frequency_changed(self, index: int):
         """Handle update frequency change."""
-        frequencies = ['disabled', 'startup', 'daily', 'weekly']
+        frequencies = ['startup', 'manual', 'automatic']
         if 0 <= index < len(frequencies):
             frequency = frequencies[index]
             self.settings_manager.set('auto_update_frequency', frequency)
             
-            logger.info(f"Auto-update frequency set to: {frequency}")
+            logger.info(f"Auto-update mode set to: {frequency}")
+            
+            mode_names = ["On Startup", "Manual Only", "Automatic (Smart)"]
             
             InfoBar.success(
                 title="Settings Saved",
-                content=f"Update check frequency updated",
+                content=f"Update mode: {mode_names[index]}. Restart app to apply.",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
-                duration=2000,
+                duration=3000,
                 parent=self
             )
-

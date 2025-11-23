@@ -1,6 +1,8 @@
 {
   "theme": "Dark",
-  "window_width": 1920,
-  "window_height": 1078,
-  "auto_update_frequency": "daily"
+  "window_width": 1100,
+  "window_height": 650,
+  "auto_update_frequency": "daily",
+  "execution_mode": "auto",
+  "automode": true
 }

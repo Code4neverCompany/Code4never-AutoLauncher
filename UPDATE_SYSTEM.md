@@ -1,3 +1,25 @@
+## Changes for version 1.0.4
+- HOTFIX: Fixed crash on startup due to UI initialization error
+- Restored missing method in About interface
+
+## Changes for version 1.0.3
+- Increased Auto-Update Check Frequency to 15 Minutes
+- Translated About Page Disclaimer to English
+- Added Current Version Changelog Display in About Page
+- Improved Update Available UI Logic
+
+## Changes for version 1.0.2
+- Redesigned About Section with Update Dashboard
+- Added Persistent 'Updating' Notification with Progress
+- Improved Update Button Behavior (Always Visible)
+- Streamlined Update Flow (Download -> Restart)
+
+## Changes for version 1.0.2
+- Redesigned About Section with Update Dashboard
+- Added Persistent 'Updating' Notification with Progress
+- Improved Update Button Behavior (Always Visible)
+- Streamlined Update Flow (Download -> Restart)
+
 ## Changes for version 1.0.0
 - Major Release: v1.0.0
 - Implemented Directory-Based Update System
@@ -34,8 +56,9 @@ The update manager now supports **automatic executable downloads and installatio
 - Identifies pre-releases (Alpha/Beta versions)
 - Detects executable assets in releases
 
-### ✅ Executable Downloads
-- Downloads `.exe` files directly from GitHub releases
+### ✅ ZIP Package Downloads
+- Downloads `.zip` release packages from GitHub
+- Supports full directory updates (including assets/dependencies)
 - Shows real-time download progress
 - Non-blocking UI (download runs in background thread)
 - Handles network errors gracefully
@@ -67,54 +90,6 @@ Returns:
 - `error`: Error message if check failed
 
 The version comparison uses semantic versioning:
-- `0.1.2` > `0.1.1` ✓
-- `0.2.0` > `0.1.9` ✓
-- Handles alpha/beta suffixes (e.g., `0.1.1-alpha`)
-
-### 2. Update Detection
-
-When an update is found, the manager checks:
-1. Is there an `.exe` file in the release assets?
-2. Is the app running as an executable?
-3. If both yes → **enable automatic update**
-4. If no → **manual download mode**
-
-### 3. Download Process
-
-For automatic updates:
-
-```python
-download_thread = UpdateDownloadThread(update_manager, exe_asset)
-download_thread.progress.connect(on_progress)  # Progress updates
-download_thread.finished.connect(on_complete)  # Download complete
-download_thread.error.connect(on_error)        # Error handling
-download_thread.start()
-```
-
-Progress callback receives:
-- `downloaded`: Bytes downloaded so far
-- `total`: Total file size in bytes
-
-### 4. Installation Process
-
-When installation starts:
-
-1. Creates a batch script (`_update.bat`)
-2. Batch script waits 2 seconds for app to close
-3. Replaces old `.exe` with new `.exe`
-4. Restarts the application
-5. Self-deletes the batch script
-
-**Batch Script** (auto-generated):
-```batch
-@echo off
-timeout /t 2 /nobreak >nul
-move /Y "<new_exe>" "<current_exe>"
-start "" "<current_exe>"
-exit
-```
-
----
 
 ## Usage
 
