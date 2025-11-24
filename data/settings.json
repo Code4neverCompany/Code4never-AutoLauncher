@@ -2,7 +2,8 @@
   "theme": "Dark",
   "window_width": 1100,
   "window_height": 650,
-  "auto_update_frequency": "daily",
+  "auto_update_frequency": "automatic",
   "execution_mode": "auto",
-  "automode": true
+  "automode": true,
+  "date_format": "MM/DD/YYYY"
 }

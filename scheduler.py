@@ -52,6 +52,10 @@ class TaskScheduler(QObject):
         self.settings_manager = SettingsManager()
         self.active_processes: Dict[int, subprocess.Popen] = {}
         
+        # Initialize ExecutionLogger
+        from execution_logger import ExecutionLogger
+        self.execution_logger = ExecutionLogger()
+        
         logger.info("TaskScheduler initialized and started")
     
     def _get_idle_time(self) -> float:
@@ -234,15 +238,14 @@ class TaskScheduler(QObject):
         """
         program_path = task['program_path']
         task_id = task['id']
+        task_name = task['name']
         
-        logger.info(f"Executing task '{task['name']}': {program_path}")
+        logger.info(f"Executing task '{task_name}': {program_path}")
+        
+        # Log STARTED event
+        self.execution_logger.log_event(task_id, task_name, "STARTED", f"Program: {program_path}")
         
         try:
-            # Resolve .lnk if needed (basic resolution)
-            # Note: Proper .lnk resolution requires pywin32 or similar, 
-            # but we'll try to run it directly first. 
-            # subprocess.Popen works with .lnk on recent Windows if shell=True
-            
             process = subprocess.Popen(
                 program_path, 
                 shell=True,
@@ -250,15 +253,15 @@ class TaskScheduler(QObject):
             )
             
             self.active_processes[task_id] = process
-            self.task_started.emit(task_id, task['name'])
+            self.task_started.emit(task_id, task_name)
             
-            # Monitor process in a separate thread to avoid blocking
-            # But for shell=True, Popen returns immediately and might not track the actual app if it spawns children.
-            # This is a limitation of shell=True. 
-            # However, for "Stop", we can try to kill the process object we have.
+            # Log FINISHED event (immediately after start for shell=True)
+            self.execution_logger.log_event(task_id, task_name, "FINISHED", "Process started successfully")
             
         except Exception as e:
-            logger.error(f"Failed to execute task '{task['name']}': {e}")
+            logger.error(f"Failed to execute task '{task_name}': {e}")
+            # Log FAILED event
+            self.execution_logger.log_event(task_id, task_name, "FAILED", f"Error: {str(e)}")
 
     def stop_task(self, task_id: int) -> bool:
         """Stop a running task (terminate process)."""

@@ -101,6 +101,29 @@ class SettingsInterface(ScrollArea):
         
         self.generalGroup.addSettingCard(self.executionModeCard)
         
+        # Date Format Setting
+        self.dateFormatCard = SettingCard(
+            FluentIcon.CALENDAR,
+            "Date Format",
+            "Choose your preferred date display format",
+            parent=self.generalGroup
+        )
+        
+        self.dateFormatComboBox = ComboBox(self.dateFormatCard)
+        self.dateFormatComboBox.addItems(["YYYY-MM-DD", "DD.MM.YYYY", "MM/DD/YYYY", "DD-MM-YYYY"])
+        self.dateFormatCard.hBoxLayout.addWidget(self.dateFormatComboBox, 0, Qt.AlignRight)
+        self.dateFormatCard.hBoxLayout.addSpacing(16)
+        
+        # Set initial state
+        date_format = self.settings_manager.get('date_format', 'YYYY-MM-DD')
+        format_map = {'YYYY-MM-DD': 0, 'DD.MM.YYYY': 1, 'MM/DD/YYYY': 2, 'DD-MM-YYYY': 3}
+        self.dateFormatComboBox.setCurrentIndex(format_map.get(date_format, 0))
+        
+        # Connect signal
+        self.dateFormatComboBox.currentIndexChanged.connect(self._on_date_format_changed)
+        
+        self.generalGroup.addSettingCard(self.dateFormatCard)
+        
         # --- Updates Settings Group ---
         self.updatesGroup = SettingCardGroup("Updates", self.scrollWidget)
         
@@ -172,5 +195,24 @@ class SettingsInterface(ScrollArea):
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
+                parent=self
+            )
+    
+    def _on_date_format_changed(self, index: int):
+        """Handle date format change."""
+        formats = ['YYYY-MM-DD', 'DD.MM.YYYY', 'MM/DD/YYYY', 'DD-MM-YYYY']
+        if 0 <= index < len(formats):
+            date_format = formats[index]
+            self.settings_manager.set('date_format', date_format)
+            
+            logger.info(f"Date format set to: {date_format}")
+            
+            InfoBar.success(
+                title="Settings Saved",
+                content=f"Date format: {date_format}. Restart to apply.",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
                 parent=self
             )

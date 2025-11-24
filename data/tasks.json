@@ -14,9 +14,19 @@
     "program_path": "C:/Users/Maurice/Desktop/ok-dna.lnk",
     "schedule_time": "2025-11-21T21:15:00",
     "recurrence": "Daily",
-    "enabled": true,
+    "enabled": false,
     "id": 2,
     "created_at": "2025-11-21T14:48:56.662058",
-    "updated_at": "2025-11-21T14:49:12.103052"
+    "updated_at": "2025-11-24T17:25:08.839351"
+  },
+  {
+    "name": "Raid Shadow Legends",
+    "program_path": "C:/Users/Maurice/Desktop/Raid Shadow Legends.lnk",
+    "schedule_time": "2025-11-25T17:25:00",
+    "recurrence": "Once",
+    "enabled": false,
+    "created_at": "2025-11-24T17:25:53.030787",
+    "id": 3,
+    "updated_at": "2025-11-24T17:26:01.553448"
   }
 ]

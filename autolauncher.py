@@ -438,6 +438,7 @@ class AutolauncherApp(FluentWindow):
         self.toolbarLayout.setContentsMargins(0, 0, 0, 0)
         self.toolbarLayout.setSpacing(10)
         
+        
         # Create buttons
         self.addButton = PushButton(FluentIcon.ADD, "Add Task", self)
         self.addButton.clicked.connect(self._add_task)
@@ -451,6 +452,12 @@ class AutolauncherApp(FluentWindow):
         self.runNowButton = PushButton(FluentIcon.PLAY, "Run Now", self)
         self.runNowButton.clicked.connect(self._run_now)
         
+        self.pauseResumeButton = PushButton(FluentIcon.PAUSE, "Pause/Resume", self)
+        self.pauseResumeButton.clicked.connect(self._toggle_task_pause)
+        
+        self.viewLogButton = PushButton(FluentIcon.HISTORY, "View Log", self)
+        self.viewLogButton.clicked.connect(self._show_execution_log)
+        
         self.themeButton = PushButton(FluentIcon.CONSTRACT, "Toggle Theme", self)
         self.themeButton.clicked.connect(self._toggle_theme)
         
@@ -459,6 +466,8 @@ class AutolauncherApp(FluentWindow):
         self.toolbarLayout.addWidget(self.editButton)
         self.toolbarLayout.addWidget(self.deleteButton)
         self.toolbarLayout.addWidget(self.runNowButton)
+        self.toolbarLayout.addWidget(self.pauseResumeButton)
+        self.toolbarLayout.addWidget(self.viewLogButton)
         self.toolbarLayout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.toolbarLayout.addWidget(self.themeButton)
         
@@ -873,6 +882,67 @@ class AutolauncherApp(FluentWindow):
         # Adding ActivationChange to catch when window wakes up/gains focus
         if event.type() in [QEvent.PaletteChange, QEvent.ActivationChange]:
             self._apply_saved_theme()
+    
+    def _toggle_task_pause(self):
+        """Toggle pause/resume for the selected task."""
+        selected_rows = self.taskTable.selectedItems()
+        if not selected_rows:
+            InfoBar.warning(
+                title="No Selection",
+                content="Please select a task to pause/resume",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self
+            )
+            return
+        
+        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.UserRole)
+        task = self.task_manager.get_task(task_id)
+        
+        if task:
+            new_enabled = not task.get('enabled', True)
+            task['enabled'] = new_enabled
+            
+            if self.task_manager.update_task(task_id, task):
+                if new_enabled:
+                    self.scheduler.add_job(task)
+                    status_msg = "Resumed"
+                else:
+                    self.scheduler.remove_job(task_id)
+                    status_msg = "Paused"
+                
+                self._refresh_task_table()
+                
+                InfoBar.success(
+                    title=f"Task {status_msg}",
+                    content=f"Task '{task['name']}' has been {status_msg.lower()}",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=2000,
+                    parent=self
+                )
+                logger.info(f"{status_msg} task ID {task_id}")
+    
+    def _show_execution_log(self):
+        """Show the execution log dialog."""
+        try:
+            from log_dialog import LogDialog
+            dialog = LogDialog(self)
+            dialog.exec()
+        except Exception as e:
+            logger.error(f"Failed to open log dialog: {e}")
+            InfoBar.error(
+                title="Error",
+                content="Could not open execution log",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self
+            )
 
     def closeEvent(self, event):
         """Handle window close event (minimize to tray instead of closing)."""
