@@ -164,25 +164,58 @@ class AutolauncherApp(FluentWindow):
         if hasattr(self, 'aboutInterface') and hasattr(self.aboutInterface, 'dashboard'):
             self.aboutInterface.dashboard.show_update_available(update_info)
             
-        # Smart Auto-Update Logic
+        # Smart Auto-Update Logic (only in Smart mode)
         frequency = self.settings_manager.get('auto_update_frequency', 'startup')
         if frequency == 'automatic' and self.update_manager.is_executable:
-            next_run = self.scheduler.get_next_run_time()
-            should_install = True
+            smart_auto_install = self.settings_manager.get('smart_auto_install', False)
             
-            if next_run:
-                now = datetime.now(next_run.tzinfo) if next_run.tzinfo else datetime.now()
-                delta = next_run - now
+            if smart_auto_install:
+                # Smart mode: Check task schedule
+                next_run = self.scheduler.get_next_run_time()
+                should_install = True
                 
-                if delta.total_seconds() < 1800: 
-                    should_install = False
-                    logger.info(f"Smart Update: Postponed. Next task in {delta.total_seconds()/60:.1f} mins")
-            
-            if should_install:
-                logger.info("Smart Update: Safe window detected. Starting automatic update...")
+                if next_run:
+                    now = datetime.now(next_run.tzinfo) if next_run.tzinfo else datetime.now()
+                    delta = next_run - now
+                    
+                    if delta.total_seconds() < 1800: 
+                        should_install = False
+                        logger.info(f"Smart Update: Postponed. Next task in {delta.total_seconds()/60:.1f} mins")
+                        
+                        # Show notification that update is postponed
+                        info_bar = InfoBar.info(
+                            title=f"Update Available: v{version}",
+                            content=f"Will install after tasks complete. Click to view details.",
+                            orient=Qt.Horizontal,
+                            isClosable=True,
+                            position=InfoBarPosition.TOP,
+                            duration=-1,  # Persistent
+                            parent=self
+                        )
+                        view_button = PushButton("View Details")
+                        view_button.clicked.connect(lambda: self._navigate_to_about_for_update())
+                        info_bar.addWidget(view_button)
+                        return
+                
+                if should_install:
+                    logger.info("Smart Update: Safe window detected. Starting automatic update...")
+                    InfoBar.success(
+                        title="Smart Update",
+                        content="Installing update automatically (no conflicting tasks)...",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=3000,
+                        parent=self
+                    )
+                    self.aboutInterface._start_update_flow()
+                    return
+            else:
+                # Immediate install mode
+                logger.info("Auto-Update: Starting immediate update...")
                 InfoBar.success(
-                    title="Smart Update",
-                    content="Installing update automatically (no conflicting tasks)...",
+                    title="Auto-Update",
+                    content=f"Installing v{version} automatically...",
                     orient=Qt.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
@@ -206,7 +239,7 @@ class AutolauncherApp(FluentWindow):
             self.update_manager.open_download_page(update_info['url'])
             return
         
-        # For executable mode, show notification with action to navigate to About page
+        # For executable mode (Manual/Startup modes), show notification with action to navigate to About page
         exe_asset = update_info.get('exe_asset')
         if not exe_asset:
             logger.warning("No .exe asset found in release")

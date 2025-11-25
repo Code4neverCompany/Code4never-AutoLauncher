@@ -1,27 +1,14 @@
 {
-    "version": "1.0.8c",
+    "version": "1.0.9",
     "build_date": "2025-11-25",
     "changelog": [
         {
-            "version": "1.0.8c",
+            "version": "1.0.9",
             "date": "2025-11-25",
             "changes": [
-                "TEST: Test release to verify update installation works correctly"
-            ]
-        },
-        {
-            "version": "1.0.8b",
-            "date": "2025-11-25",
-            "changes": [
-                "HOTFIX: Fixed update installation failing due to locked DLL files",
-                "HOTFIX: Increased wait time and added process termination before installation"
-            ]
-        },
-        {
-            "version": "1.0.8a",
-            "date": "2025-11-25",
-            "changes": [
-                "HOTFIX: Automatic update now shows notification even when postponed due to scheduled tasks"
+                "FIX: Restored auto-update detection and notification system",
+                "FIX: Update installation reliability improvements (process termination + extended wait)",
+                "FEATURE: Smart Auto-Update logic - postpones installation if tasks scheduled within 30 minutes"
             ]
         }
     ]
