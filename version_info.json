@@ -1,16 +1,3 @@
-{
-    "version": "1.0.7",
-    "build_date": "2025-11-24",
-    "changelog": [
-        {
-            "version": "1.0.7",
-            "date": "2025-11-24",
-            "changes": [
-                "Feature: Smart Auto-Update - Installs updates only when no tasks scheduled within 30 minutes",
-                "Feature: Pause/Resume Tasks with visual status indicator",
-                "Feature: Live Countdown Timers for all scheduled tasks",
-                "Feature: Date Format Options (YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY, DD-MM-YYYY)",
-                "Feature: Execution Log with comprehensive event tracking",
                 "UI: Interactive column resizing - Users can now adjust table column widths",
                 "UI: Clearer column separation for Schedule and Countdown",
                 "UI: Icons now inline with task names (removed separate column)",
