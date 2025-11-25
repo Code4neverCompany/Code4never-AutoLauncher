@@ -44,9 +44,9 @@ class SettingsInterface(ScrollArea):
     
     date_format_changed = pyqtSignal()
     
-    def __init__(self, parent=None):
+    def __init__(self, settings_manager=None, parent=None):
         super().__init__(parent)
-        self.settings_manager = SettingsManager()
+        self.settings_manager = settings_manager if settings_manager else SettingsManager()
         
         self.scrollWidget = QWidget()
         self.expandLayout = QVBoxLayout(self.scrollWidget)

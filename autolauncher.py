@@ -347,7 +347,7 @@ class AutolauncherApp(FluentWindow):
         self._create_main_widget()
         
         # Create settings interface
-        self.settingsInterface = SettingsInterface(self)
+        self.settingsInterface = SettingsInterface(self.settings_manager, self)
         self.settingsInterface.date_format_changed.connect(self._refresh_task_table)
         
         # Create about interface

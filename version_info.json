@@ -7,9 +7,18 @@
             "date": "2025-11-24",
             "changes": [
                 "Feature: Smart Auto-Update - Installs updates only when no tasks scheduled within 30 minutes",
+                "Feature: Pause/Resume Tasks with visual status indicator",
+                "Feature: Live Countdown Timers for all scheduled tasks",
+                "Feature: Date Format Options (YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY, DD-MM-YYYY)",
+                "Feature: Execution Log with comprehensive event tracking",
                 "UI: Interactive column resizing - Users can now adjust table column widths",
                 "UI: Clearer column separation for Schedule and Countdown",
+                "UI: Icons now inline with task names (removed separate column)",
+                "UI: Theme-aware text colors",
                 "UI: Updated About section disclaimer to be Autolauncher-specific",
+                "Fix: Date format setting now applies immediately to task table",
+                "Fix: Update button logic for rollback scenarios",
+                "Fix: Auto-update installation reliability (backup, verification, delay)",
                 "Fix: Added scheduler method for smart update scheduling"
             ]
         },
@@ -17,16 +26,13 @@
             "version": "1.0.6",
             "date": "2025-11-23",
             "changes": [
-                "Feature: Pause/Resume Tasks with visual status indicator",
-                "Feature: Live Countdown Timers for all scheduled tasks",
-                "Feature: Date Format Options (YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY, DD-MM-YYYY)",
-                "Feature: Execution Log with comprehensive event tracking",
-                "UI: Icons now inline with task names (removed separate column)",
+                "Feature: Pause/Resume Tasks (Initial implementation)",
+                "Feature: Live Countdown Timers",
+                "Feature: Date Format Options",
+                "Feature: Execution Log",
+                "UI: Icons inline with task names",
                 "UI: Theme-aware text colors",
-                "UI: Fixed Settings label truncation",
-                "Fix: Task selection preserved after pause/resume",
-                "Fix: Daily task countdown calculation",
-                "Fix: .lnk shortcut icon extraction"
+                "UI: Fixed Settings label truncation"
             ]
         },
         {
