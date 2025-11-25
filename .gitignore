@@ -53,6 +53,12 @@ data/*.json
 *.exe
 release/
 
+# Release documentation (generated, not needed in git)
+*GITHUB_RELEASE*.md
+*BUILD_SUMMARY*.md
+
 # Temp files
 *.tmp
 *.bak
+etag_cache.json
+last_update_check.json
