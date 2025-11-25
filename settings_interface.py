@@ -126,6 +126,29 @@ class SettingsInterface(ScrollArea):
         
         self.generalGroup.addSettingCard(self.dateFormatCard)
         
+        # Time Format Setting
+        self.timeFormatCard = SettingCard(
+            FluentIcon.HISTORY,
+            "Time Format",
+            "Choose between 12-hour and 24-hour time display",
+            parent=self.generalGroup
+        )
+        
+        self.timeFormatComboBox = ComboBox(self.timeFormatCard)
+        self.timeFormatComboBox.addItems(["24-hour (14:30)", "12-hour (2:30 PM)"])
+        self.timeFormatCard.hBoxLayout.addWidget(self.timeFormatComboBox, 0, Qt.AlignRight)
+        self.timeFormatCard.hBoxLayout.addSpacing(16)
+        
+        # Set initial state
+        time_format = self.settings_manager.get('time_format', '24h')
+        format_map = {'24h': 0, '12h': 1}
+        self.timeFormatComboBox.setCurrentIndex(format_map.get(time_format, 0))
+        
+        # Connect signal
+        self.timeFormatComboBox.currentIndexChanged.connect(self._on_time_format_changed)
+        
+        self.generalGroup.addSettingCard(self.timeFormatCard)
+        
         # --- Updates Settings Group ---
         self.updatesGroup = SettingCardGroup("Updates", self.scrollWidget)
         
@@ -215,6 +238,25 @@ class SettingsInterface(ScrollArea):
             InfoBar.success(
                 title="Settings Saved",
                 content=f"Date format: {date_format}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
+                parent=self
+            )
+    
+    def _on_time_format_changed(self, index: int):
+        """Handle time format change."""
+        formats = ['24h', '12h']
+        if 0 <= index < len(formats):
+            time_format = formats[index]
+            self.settings_manager.set('time_format', time_format)
+            
+            logger.info(f"Time format set to: {time_format}")
+            
+            InfoBar.success(
+                title="Settings Saved",
+                content=f"Time format: {'24-hour' if time_format == '24h' else '12-hour'}",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,

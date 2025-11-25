@@ -112,6 +112,9 @@ class TaskDialog(MessageBoxBase):
         self.timePicker.setFocusPolicy(Qt.WheelFocus)
         self.timePicker.setAttribute(Qt.WA_AcceptTouchEvents, False)  # Prioritize mouse wheel
         
+        # Apply time format from settings
+        self._apply_time_format()
+        
         # Add widgets to layout
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addSpacing(10)
@@ -279,6 +282,19 @@ class TaskDialog(MessageBoxBase):
         qt_format = format_map.get(date_format_setting, 'yyyy-MM-dd')
         self.datePicker.setDateFormat(qt_format)
         logger.debug(f"Applied date format: {qt_format}")
+    
+    def _apply_time_format(self):
+        """Apply user's preferred time format to the time picker."""
+        time_format_setting = self.settings_manager.get('time_format', '24h')
+        
+        # Map setting to Qt time format
+        if time_format_setting == '12h':
+            qt_format = 'hh:mm AP'  # 12-hour with AM/PM
+        else:
+            qt_format = 'HH:mm'  # 24-hour
+        
+        self.timePicker.setDisplayFormat(qt_format)
+        logger.debug(f"Applied time format: {qt_format}")
     
     def _on_recurrence_changed(self, index):
         """Handle recurrence type change to show/hide date picker."""
