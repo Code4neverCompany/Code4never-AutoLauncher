@@ -42,6 +42,8 @@ class SettingsInterface(ScrollArea):
     Settings interface for application preferences.
     """
     
+    date_format_changed = pyqtSignal()
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.settings_manager = SettingsManager()
@@ -207,9 +209,12 @@ class SettingsInterface(ScrollArea):
             
             logger.info(f"Date format set to: {date_format}")
             
+            # Emit signal to update UI immediately
+            self.date_format_changed.emit()
+            
             InfoBar.success(
                 title="Settings Saved",
-                content=f"Date format: {date_format}. Restart to apply.",
+                content=f"Date format: {date_format}",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,

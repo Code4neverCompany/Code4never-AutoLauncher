@@ -348,6 +348,7 @@ class AutolauncherApp(FluentWindow):
         
         # Create settings interface
         self.settingsInterface = SettingsInterface(self)
+        self.settingsInterface.date_format_changed.connect(self._refresh_task_table)
         
         # Create about interface
         self.aboutInterface = AboutInterface(self)
@@ -537,7 +538,19 @@ class AutolauncherApp(FluentWindow):
                 recurrence = task.get('recurrence', 'Once')
                 
                 if recurrence == 'Once':
-                    schedule_str = schedule_time.strftime('%Y-%m-%d %H:%M')
+                    # Get date format from settings
+                    date_fmt_setting = self.settings_manager.get('date_format', 'YYYY-MM-DD')
+                    
+                    # Map setting to strftime format
+                    fmt_map = {
+                        'YYYY-MM-DD': '%Y-%m-%d',
+                        'DD.MM.YYYY': '%d.%m.%Y',
+                        'MM/DD/YYYY': '%m/%d/%Y',
+                        'DD-MM-YYYY': '%d-%m-%Y'
+                    }
+                    date_fmt = fmt_map.get(date_fmt_setting, '%Y-%m-%d')
+                    
+                    schedule_str = schedule_time.strftime(f'{date_fmt} %H:%M')
                 else:
                     # For recurring tasks, show the pattern and time
                     time_str = schedule_time.strftime('%H:%M')
