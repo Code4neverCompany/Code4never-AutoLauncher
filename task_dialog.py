@@ -12,11 +12,12 @@ from qfluentwidgets import (
     SubtitleLabel,
     LineEdit,
     PushButton,
-    DatePicker,
+    CalendarPicker,
     TimePicker,
     BodyLabel,
     ComboBox
 )
+from task_manager import SettingsManager
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -28,17 +29,19 @@ class TaskDialog(MessageBoxBase):
     Supports dragging and mouse wheel time adjustment.
     """
     
-    def __init__(self, parent=None, task_data=None):
+    def __init__(self, parent=None, task_data=None, settings_manager=None):
         """
         Initialize the task dialog.
         
         Args:
             parent: Parent widget
             task_data: Optional dictionary with existing task data for editing
+            settings_manager: SettingsManager instance for date format preferences
         """
         super().__init__(parent)
         self.task_data = task_data
         self.is_edit_mode = task_data is not None
+        self.settings_manager = settings_manager if settings_manager else SettingsManager()
         
         # Variables for window dragging
         self.dragging = False
@@ -84,17 +87,21 @@ class TaskDialog(MessageBoxBase):
         self.browseButton.clicked.connect(self._browse_program)
         
         # Recurrence
-        self.recurrenceLabel = BodyLabel("Recurrence:", self)
+        self.recurrenceLabel = BodyLabel("How often should this run?", self)
         self.recurrenceCombo = ComboBox(self)
         self.recurrenceCombo.addItems(["Once", "Daily", "Weekly", "Monthly"])
         self.recurrenceCombo.setCurrentIndex(0)
+        self.recurrenceCombo.currentIndexChanged.connect(self._on_recurrence_changed)
         
         # Schedule Date
-        self.dateLabel = BodyLabel("Schedule Date (Start Date):", self)
-        self.datePicker = DatePicker(self)
+        self.dateLabel = BodyLabel("Schedule Date:", self)
+        self.datePicker = CalendarPicker(self)
         # Set to current date using QDate
         now = datetime.now()
         self.datePicker.setDate(QDate(now.year, now.month, now.day))
+        
+        # Apply date format from settings
+        self._apply_date_format()
         
         # Schedule Time
         self.timeLabel = BodyLabel("Schedule Time:", self)
@@ -132,6 +139,9 @@ class TaskDialog(MessageBoxBase):
         # Configure buttons
         self.yesButton.setText("Save" if self.is_edit_mode else "Add Task")
         self.cancelButton.setText("Cancel")
+        
+        # Initialize date picker visibility based on default recurrence (Once)
+        self._on_recurrence_changed(0)
     
     def _browse_program(self):
         """Open file browser to select an executable."""
@@ -253,6 +263,35 @@ class TaskDialog(MessageBoxBase):
             pass
             
         return task
+    
+    def _apply_date_format(self):
+        """Apply user's preferred date format to the date picker."""
+        date_format_setting = self.settings_manager.get('date_format', 'YYYY-MM-DD')
+        
+        # Map setting to Qt date format
+        format_map = {
+            'YYYY-MM-DD': 'yyyy-MM-dd',
+            'DD.MM.YYYY': 'dd.MM.yyyy',
+            'MM/DD/YYYY': 'MM/dd/yyyy',
+            'DD-MM-YYYY': 'dd-MM-yyyy'
+        }
+        
+        qt_format = format_map.get(date_format_setting, 'yyyy-MM-dd')
+        self.datePicker.setDateFormat(qt_format)
+        logger.debug(f"Applied date format: {qt_format}")
+    
+    def _on_recurrence_changed(self, index):
+        """Handle recurrence type change to show/hide date picker."""
+        recurrence = self.recurrenceCombo.currentText()
+        
+        # Only show date picker for "Once" tasks
+        # Recurring tasks start from current time
+        show_date = (recurrence == "Once")
+        
+        self.dateLabel.setVisible(show_date)
+        self.datePicker.setVisible(show_date)
+        
+        logger.debug(f"Recurrence changed to: {recurrence}, date picker visible: {show_date}")
     
     def mousePressEvent(self, event):
         """Handle mouse press for window dragging."""

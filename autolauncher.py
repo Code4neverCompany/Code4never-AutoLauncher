@@ -667,7 +667,7 @@ class AutolauncherApp(FluentWindow):
     def _add_task(self):
         """Show dialog to add a new task."""
         
-        dialog = TaskDialog(self)
+        dialog = TaskDialog(self, settings_manager=self.settings_manager)
         result = dialog.exec()
         
         # Reactivate main window to fix contrast/appearance issue
@@ -734,7 +734,7 @@ class AutolauncherApp(FluentWindow):
         task = self.task_manager.get_task(task_id)
         
         if task:
-            dialog = TaskDialog(self, task_data=task)
+            dialog = TaskDialog(self, task_data=task, settings_manager=self.settings_manager)
             result = dialog.exec()
             
             # Reactivate main window to fix contrast/appearance issue
