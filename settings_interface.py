@@ -5,8 +5,8 @@ Displays application settings.
 © 2025 4never Company. All rights reserved.
 """
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog
+from PyQt6.QtCore import Qt, pyqtSignal
 from qfluentwidgets import (
     SettingCardGroup,
     SwitchSettingCard,
@@ -34,7 +34,7 @@ from qfluentwidgets import (
 from task_manager import SettingsManager
 from logger import get_logger
 from language_manager import get_language_manager, set_language
-from config import DEFAULT_LANGUAGE
+from config import DEFAULT_LANGUAGE, DEFAULT_BLOCKLIST_PROCESSES
 
 logger = get_logger(__name__)
 
@@ -69,7 +69,7 @@ class SettingsInterface(ScrollArea):
         """Initialize the UI components."""
         
         # Configure layout
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         
@@ -93,7 +93,7 @@ class SettingsInterface(ScrollArea):
         
         self.modeComboBox = ComboBox(self.executionModeCard)
         self.modeComboBox.addItems(["Automatic (Postpone if busy)", "Interactive (Ask if busy)", "Aggressive (Run always)"])
-        self.executionModeCard.hBoxLayout.addWidget(self.modeComboBox, 0, Qt.AlignRight)
+        self.executionModeCard.hBoxLayout.addWidget(self.modeComboBox, 0, Qt.AlignmentFlag.AlignRight)
         self.executionModeCard.hBoxLayout.addSpacing(16)
         
         # Set initial state
@@ -121,7 +121,7 @@ class SettingsInterface(ScrollArea):
         
         self.preWakeComboBox = ComboBox(self.preWakeCard)
         self.preWakeComboBox.addItems(["1 minute", "3 minutes", "5 minutes", "10 minutes", "15 minutes"])
-        self.preWakeCard.hBoxLayout.addWidget(self.preWakeComboBox, 0, Qt.AlignRight)
+        self.preWakeCard.hBoxLayout.addWidget(self.preWakeComboBox, 0, Qt.AlignmentFlag.AlignRight)
         self.preWakeCard.hBoxLayout.addSpacing(16)
         
         # Set initial state
@@ -144,7 +144,7 @@ class SettingsInterface(ScrollArea):
         
         self.dateFormatComboBox = ComboBox(self.dateFormatCard)
         self.dateFormatComboBox.addItems(["YYYY-MM-DD", "DD.MM.YYYY", "MM/DD/YYYY", "DD-MM-YYYY"])
-        self.dateFormatCard.hBoxLayout.addWidget(self.dateFormatComboBox, 0, Qt.AlignRight)
+        self.dateFormatCard.hBoxLayout.addWidget(self.dateFormatComboBox, 0, Qt.AlignmentFlag.AlignRight)
         self.dateFormatCard.hBoxLayout.addSpacing(16)
         
         # Set initial state
@@ -167,7 +167,7 @@ class SettingsInterface(ScrollArea):
         
         self.timeFormatComboBox = ComboBox(self.timeFormatCard)
         self.timeFormatComboBox.addItems(["24-hour (14:30)", "12-hour (2:30 PM)"])
-        self.timeFormatCard.hBoxLayout.addWidget(self.timeFormatComboBox, 0, Qt.AlignRight)
+        self.timeFormatCard.hBoxLayout.addWidget(self.timeFormatComboBox, 0, Qt.AlignmentFlag.AlignRight)
         self.timeFormatCard.hBoxLayout.addSpacing(16)
         
         # Set initial state
@@ -193,7 +193,7 @@ class SettingsInterface(ScrollArea):
         available_languages = self.lang_manager.get_available_languages()
         self.language_codes = list(available_languages.keys())
         self.languageComboBox.addItems(list(available_languages.values()))
-        self.languageCard.hBoxLayout.addWidget(self.languageComboBox, 0, Qt.AlignRight)
+        self.languageCard.hBoxLayout.addWidget(self.languageComboBox, 0, Qt.AlignmentFlag.AlignRight)
         self.languageCard.hBoxLayout.addSpacing(16)
         
         # Set initial state
@@ -219,7 +219,7 @@ class SettingsInterface(ScrollArea):
         
         self.updateFrequencyComboBox = ComboBox(self.autoUpdateCard)
         self.updateFrequencyComboBox.addItems(["On Startup", "Manual Only", "Automatic (Smart)"])
-        self.autoUpdateCard.hBoxLayout.addWidget(self.updateFrequencyComboBox, 0, Qt.AlignRight)
+        self.autoUpdateCard.hBoxLayout.addWidget(self.updateFrequencyComboBox, 0, Qt.AlignmentFlag.AlignRight)
         self.autoUpdateCard.hBoxLayout.addSpacing(16)
         
         # Set initial state
@@ -232,10 +232,75 @@ class SettingsInterface(ScrollArea):
         
         self.updatesGroup.addSettingCard(self.autoUpdateCard)
 
+        # --- Blocklist Settings Group ---
+        self.blocklistGroup = SettingCardGroup("Blocklist", self.scrollWidget)
+        
+        # Blocklist management card
+        self.blocklistCard = SettingCard(
+            FluentIcon.CANCEL,
+            "Blocking Programs",
+            "Tasks are postponed when these programs are running (in Auto mode)",
+            parent=self.blocklistGroup
+        )
+        
+        # Add button to open blocklist dialog
+        from qfluentwidgets import PushButton
+        self.editBlocklistButton = PushButton("Edit List", self.blocklistCard)
+        self.editBlocklistButton.clicked.connect(self._open_blocklist_dialog)
+        self.blocklistCard.hBoxLayout.addWidget(self.editBlocklistButton, 0, Qt.AlignmentFlag.AlignRight)
+        self.blocklistCard.hBoxLayout.addSpacing(16)
+        
+        self.blocklistGroup.addSettingCard(self.blocklistCard)
+        
+        # Scan for programs button
+        self.scanBlocklistCard = SettingCard(
+            FluentIcon.SEARCH,
+            "Scan for Programs",
+            "Detect installed games and IDEs to add to blocklist",
+            parent=self.blocklistGroup
+        )
+        
+        self.scanBlocklistButton = PushButton("Scan", self.scanBlocklistCard)
+        self.scanBlocklistButton.clicked.connect(self._scan_for_programs)
+        self.scanBlocklistCard.hBoxLayout.addWidget(self.scanBlocklistButton, 0, Qt.AlignmentFlag.AlignRight)
+        self.scanBlocklistCard.hBoxLayout.addSpacing(16)
+        
+        self.blocklistGroup.addSettingCard(self.scanBlocklistCard)
+        
+        # Update program list button
+        self.updateProgramListCard = SettingCard(
+            FluentIcon.SYNC,
+            "Update Program List",
+            "Download latest games and apps database from the web",
+            parent=self.blocklistGroup
+        )
+        
+        self.updateProgramListButton = PushButton("Update", self.updateProgramListCard)
+        self.updateProgramListButton.clicked.connect(self._update_program_list)
+        self.updateProgramListCard.hBoxLayout.addWidget(self.updateProgramListButton, 0, Qt.AlignmentFlag.AlignRight)
+        self.updateProgramListCard.hBoxLayout.addSpacing(16)
+        
+        self.blocklistGroup.addSettingCard(self.updateProgramListCard)
+        
+        # Clear blocklist button
+        self.resetBlocklistCard = SettingCard(
+            FluentIcon.DELETE,
+            "Clear Blocklist",
+            "Remove all programs from the blocklist",
+            parent=self.blocklistGroup
+        )
+        
+        self.resetBlocklistButton = PushButton("Clear", self.resetBlocklistCard)
+        self.resetBlocklistButton.clicked.connect(self._reset_blocklist)
+        self.resetBlocklistCard.hBoxLayout.addWidget(self.resetBlocklistButton, 0, Qt.AlignmentFlag.AlignRight)
+        self.resetBlocklistCard.hBoxLayout.addSpacing(16)
+        
+        self.blocklistGroup.addSettingCard(self.resetBlocklistCard)
         
         # Add groups to layout
         self.expandLayout.addWidget(self.generalGroup)
         self.expandLayout.addWidget(self.updatesGroup)
+        self.expandLayout.addWidget(self.blocklistGroup)
         self.expandLayout.addStretch(1)
         
     def _on_execution_mode_changed(self, index: int):
@@ -252,7 +317,7 @@ class SettingsInterface(ScrollArea):
             InfoBar.success(
                 title="Settings Saved",
                 content=f"Execution Mode updated",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=2000,
@@ -271,7 +336,7 @@ class SettingsInterface(ScrollArea):
             InfoBar.success(
                 title="Settings Saved",
                 content=f"Pre-wake duration: {duration} min",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=2000,
@@ -292,7 +357,7 @@ class SettingsInterface(ScrollArea):
             InfoBar.success(
                 title="Settings Saved",
                 content=f"Update mode: {mode_names[index]}. Restart app to apply.",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
@@ -314,7 +379,7 @@ class SettingsInterface(ScrollArea):
             InfoBar.success(
                 title="Settings Saved",
                 content=f"Date format: {date_format}",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=2000,
@@ -333,7 +398,7 @@ class SettingsInterface(ScrollArea):
             InfoBar.success(
                 title="Settings Saved",
                 content=f"Time format: {'24-hour' if time_format == '24h' else '12-hour'}",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=2000,
@@ -364,12 +429,509 @@ class SettingsInterface(ScrollArea):
             InfoBar.success(
                 title=self.lang_manager.get_text("settings.settings_saved"),
                 content=self.lang_manager.format_text("settings.language_updated", language=lang_display),
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=2000,
                 parent=self
             )
+    
+    def _open_blocklist_dialog(self):
+        """Open dialog to edit blocklist."""
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QFileDialog
+        from qfluentwidgets import PrimaryPushButton, PushButton, SubtitleLabel, BodyLabel
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Edit Blocking Programs")
+        dialog.setMinimumSize(500, 450)
+        
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Title
+        title = SubtitleLabel("Programs that postpone task execution:")
+        layout.addWidget(title)
+        
+        # Help text
+        helpText = BodyLabel("When these programs are running, tasks will be postponed (Auto mode only).\nClick 'Browse' to add executables from your computer.")
+        helpText.setWordWrap(True)
+        layout.addWidget(helpText)
+        
+        # List widget
+        self._blocklistWidget = QListWidget()
+        self._blocklistWidget.setAlternatingRowColors(True)
+        self._blocklistWidget.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        
+        # Load current blocklist (starts empty if not configured)
+        current_list = self.settings_manager.get('blocklist_processes', [])
+        
+        for proc in sorted(current_list):
+            item = QListWidgetItem(proc)
+            self._blocklistWidget.addItem(item)
+        
+        layout.addWidget(self._blocklistWidget)
+        
+        # Button row: Browse / Remove
+        actionLayout = QHBoxLayout()
+        
+        browseButton = PrimaryPushButton("Browse...")
+        browseButton.clicked.connect(lambda: self._browse_for_executable(dialog))
+        actionLayout.addWidget(browseButton)
+        
+        removeButton = PushButton("Remove Selected")
+        removeButton.clicked.connect(self._remove_selected_blocklist_items)
+        actionLayout.addWidget(removeButton)
+        
+        actionLayout.addStretch()
+        layout.addLayout(actionLayout)
+        
+        # Save/Cancel buttons
+        buttonLayout = QHBoxLayout()
+        cancelButton = PushButton("Cancel")
+        cancelButton.clicked.connect(dialog.reject)
+        saveButton = PrimaryPushButton("Save")
+        saveButton.clicked.connect(lambda: self._save_blocklist(dialog))
+        
+        buttonLayout.addStretch()
+        buttonLayout.addWidget(cancelButton)
+        buttonLayout.addWidget(saveButton)
+        layout.addLayout(buttonLayout)
+        
+        dialog.exec()
+    
+    def _browse_for_executable(self, parent_dialog):
+        """Open file browser to select an executable."""
+        from PyQt6.QtWidgets import QFileDialog, QListWidgetItem
+        from pathlib import Path
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            parent_dialog,
+            "Select Executable",
+            "",
+            "Executables (*.exe);;All Files (*)"
+        )
+        
+        if file_path:
+            # Extract just the filename
+            exe_name = Path(file_path).name
+            
+            # Check for duplicates
+            existing = [self._blocklistWidget.item(i).text().lower() for i in range(self._blocklistWidget.count())]
+            if exe_name.lower() not in existing:
+                self._blocklistWidget.addItem(QListWidgetItem(exe_name))
+            else:
+                InfoBar.warning(
+                    title="Duplicate",
+                    content=f"{exe_name} is already in the list",
+                    orient=Qt.Orientation.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP_RIGHT,
+                    duration=2000,
+                    parent=self
+                )
+    
+    def _remove_selected_blocklist_items(self):
+        """Remove selected items from blocklist."""
+        for item in self._blocklistWidget.selectedItems():
+            self._blocklistWidget.takeItem(self._blocklistWidget.row(item))
+    
+    def _save_blocklist(self, dialog):
+        """Save the blocklist to settings."""
+        processes = [self._blocklistWidget.item(i).text() for i in range(self._blocklistWidget.count())]
+        self.settings_manager.set('blocklist_processes', processes)
+        
+        logger.info(f"Blocklist updated: {len(processes)} processes")
+        
+        InfoBar.success(
+            title="Blocklist Saved",
+            content=f"{len(processes)} programs in blocklist",
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2000,
+            parent=self
+        )
+        dialog.accept()
+    
+    def _reset_blocklist(self):
+        """Reset blocklist to empty."""
+        self.settings_manager.set('blocklist_processes', [])
+        
+        logger.info("Blocklist cleared")
+        
+        InfoBar.success(
+            title="Blocklist Cleared",
+            content="Blocklist is now empty",
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2000,
+            parent=self
+        )
+    
+    def _load_known_programs(self) -> dict:
+        """Load known programs from JSON file (local or bundled)."""
+        import json
+        from pathlib import Path
+        
+        # Try loading from AppData first (updated version)
+        appdata_path = Path(os.environ.get('APPDATA', '')) / 'c4n-AutoLauncher' / 'known_programs.json'
+        
+        if appdata_path.exists():
+            try:
+                with open(appdata_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    # Convert list format to tuple format
+                    return {k: tuple(v) for k, v in data.get('programs', {}).items()}
+            except Exception as e:
+                logger.warning(f"Failed to load AppData programs: {e}")
+        
+        # Fall back to bundled file
+        bundled_path = Path(__file__).parent / 'known_programs.json'
+        
+        if bundled_path.exists():
+            try:
+                with open(bundled_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return {k: tuple(v) for k, v in data.get('programs', {}).items()}
+            except Exception as e:
+                logger.warning(f"Failed to load bundled programs: {e}")
+        
+        # Return empty dict if nothing found
+        logger.warning("No known_programs.json found")
+        return {}
+    
+    def _update_program_list(self):
+        """Download latest known_programs.json from GitHub."""
+        import json
+        import urllib.request
+        from pathlib import Path
+        
+        # GitHub raw URL for the file
+        GITHUB_URL = "https://raw.githubusercontent.com/Code4neverCompany/Code4never-AutoLauncher/main/known_programs.json"
+        
+        try:
+            InfoBar.info(
+                title="Updating...",
+                content="Downloading latest program list",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
+                parent=self
+            )
+            
+            # Download the file
+            with urllib.request.urlopen(GITHUB_URL, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
+            
+            # Save to AppData
+            appdata_dir = Path(os.environ.get('APPDATA', '')) / 'c4n-AutoLauncher'
+            appdata_dir.mkdir(parents=True, exist_ok=True)
+            
+            appdata_path = appdata_dir / 'known_programs.json'
+            with open(appdata_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+            
+            program_count = len(data.get('programs', {}))
+            version = data.get('version', 'unknown')
+            
+            logger.info(f"Updated known_programs.json to v{version} ({program_count} programs)")
+            
+            InfoBar.success(
+                title="Update Complete",
+                content=f"Downloaded {program_count} programs (v{version})",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self
+            )
+            
+        except urllib.error.URLError as e:
+            logger.error(f"Failed to download program list: {e}")
+            InfoBar.error(
+                title="Update Failed",
+                content="Could not connect to server",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self
+            )
+        except Exception as e:
+            logger.error(f"Failed to update program list: {e}")
+            InfoBar.error(
+                title="Update Failed",
+                content=str(e)[:50],
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self
+            )
+    
+    def _scan_for_programs(self):
+        """Scan for installed games and IDEs to suggest for blocklist."""
+        from PyQt6.QtCore import QThread, pyqtSignal
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QListWidget, QListWidgetItem, QHBoxLayout, QGroupBox, QProgressBar
+        from qfluentwidgets import PrimaryPushButton, PushButton, SubtitleLabel, BodyLabel, CheckBox
+        from pathlib import Path
+        import os
+        import string
+        
+        # Load programs from JSON file (dynamic, can be updated)
+        KNOWN_PROGRAMS = self._load_known_programs()
+        
+        if not KNOWN_PROGRAMS:
+            InfoBar.warning(
+                title="No Program List",
+                content="Click 'Update' to download the program list first",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self
+            )
+            return
+        
+        # Step 1: Show drive selection dialog
+        driveDialog = QDialog(self)
+        driveDialog.setWindowTitle("Select Drives to Scan")
+        driveDialog.setMinimumWidth(350)
+        
+        driveLayout = QVBoxLayout(driveDialog)
+        driveLayout.setSpacing(12)
+        driveLayout.setContentsMargins(20, 20, 20, 20)
+        
+        driveLayout.addWidget(SubtitleLabel("Where should we look?"))
+        driveLayout.addWidget(BodyLabel("Select the drives to scan for installed programs:"))
+        
+        # Detect available drives
+        available_drives = []
+        for letter in string.ascii_uppercase:
+            drive_path = Path(f"{letter}:\\")
+            if drive_path.exists():
+                try:
+                    next(drive_path.iterdir(), None)
+                    available_drives.append(letter)
+                except (PermissionError, OSError):
+                    pass
+        
+        driveCheckboxes = {}
+        driveGroup = QGroupBox("Available Drives")
+        driveGroupLayout = QVBoxLayout(driveGroup)
+        
+        for drive in available_drives:
+            cb = CheckBox(f"{drive}:\\ drive")
+            if drive == 'C':
+                cb.setChecked(True)
+            driveCheckboxes[drive] = cb
+            driveGroupLayout.addWidget(cb)
+        
+        driveLayout.addWidget(driveGroup)
+        
+        driveButtonLayout = QHBoxLayout()
+        driveCancelBtn = PushButton("Cancel")
+        driveCancelBtn.clicked.connect(driveDialog.reject)
+        driveScanBtn = PrimaryPushButton("Scan Selected Drives")
+        
+        driveButtonLayout.addStretch()
+        driveButtonLayout.addWidget(driveCancelBtn)
+        driveButtonLayout.addWidget(driveScanBtn)
+        driveLayout.addLayout(driveButtonLayout)
+        
+        selected_drives = []
+        
+        def start_scan():
+            nonlocal selected_drives
+            selected_drives = [d for d, cb in driveCheckboxes.items() if cb.isChecked()]
+            if selected_drives:
+                driveDialog.accept()
+            else:
+                InfoBar.warning(
+                    title="No Drives Selected",
+                    content="Please select at least one drive",
+                    orient=Qt.Orientation.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP_RIGHT,
+                    duration=2000,
+                    parent=driveDialog
+                )
+        
+        driveScanBtn.clicked.connect(start_scan)
+        
+        if driveDialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        
+        # Step 2: Show progress dialog with real progress bar
+        progressDialog = QDialog(self)
+        progressDialog.setWindowTitle("Scanning...")
+        progressDialog.setFixedSize(320, 130)
+        progressLayout = QVBoxLayout(progressDialog)
+        progressLayout.setContentsMargins(20, 20, 20, 20)
+        
+        self._progressLabel = BodyLabel(f"Scanning {', '.join(selected_drives)}:\\ drives...")
+        progressLayout.addWidget(self._progressLabel)
+        
+        self._progressBar = QProgressBar()
+        self._progressBar.setMinimum(0)
+        self._progressBar.setMaximum(100)
+        self._progressBar.setValue(0)
+        self._progressBar.setTextVisible(True)
+        self._progressBar.setFormat("%p% - %v of %m programs checked")
+        progressLayout.addWidget(self._progressBar)
+        
+        # Scanner thread with progress reporting
+        class ScannerThread(QThread):
+            finished = pyqtSignal(list)
+            progress = pyqtSignal(int, int, str)  # current, total, current_exe
+            
+            def __init__(self, known_progs, current_list, drives):
+                super().__init__()
+                self.known_programs = known_progs
+                self.current_lower = [p.lower() for p in current_list]
+                self.drives = drives
+                
+            def run(self):
+                found = []
+                scan_dirs = []
+                
+                for drive in self.drives:
+                    scan_dirs.extend([
+                        Path(f"{drive}:\\Program Files"),
+                        Path(f"{drive}:\\Program Files (x86)"),
+                        Path(f"{drive}:\\Games"),
+                        Path(f"{drive}:\\SteamLibrary"),
+                        Path(f"{drive}:\\Epic Games"),
+                    ])
+                
+                local_appdata = os.environ.get('LOCALAPPDATA', '')
+                if local_appdata:
+                    scan_dirs.append(Path(local_appdata) / "Programs")
+                
+                # Filter to existing directories
+                scan_dirs = [d for d in scan_dirs if d.exists()]
+                
+                exe_list = list(self.known_programs.keys())
+                total = len(exe_list)
+                
+                for idx, exe_name in enumerate(exe_list):
+                    self.progress.emit(idx + 1, total, exe_name)
+                    
+                    if exe_name.lower() in self.current_lower:
+                        continue
+                    if exe_name in [f[0] for f in found]:
+                        continue
+                    
+                    for scan_dir in scan_dirs:
+                        try:
+                            # Quick search with limited depth
+                            for depth in range(1, 4):
+                                pattern = '/'.join(['*'] * depth) + '/' + exe_name
+                                if list(scan_dir.glob(pattern)):
+                                    found.append((exe_name, self.known_programs[exe_name]))
+                                    break
+                        except Exception:
+                            pass
+                
+                self.finished.emit(found)
+        
+        current_blocklist = self.settings_manager.get('blocklist_processes', [])
+        self._scanThread = ScannerThread(KNOWN_PROGRAMS, current_blocklist, selected_drives)
+        
+        def update_progress(current, total, exe_name):
+            self._progressBar.setMaximum(total)
+            self._progressBar.setValue(current)
+            # Show short name
+            short_name = exe_name[:20] + "..." if len(exe_name) > 20 else exe_name
+            self._progressLabel.setText(f"Checking: {short_name}")
+        
+        def on_scan_complete(found_programs):
+            progressDialog.close()
+            
+            if found_programs:
+                by_category = {'Game': [], 'IDE': [], 'Productivity': []}
+                for exe, (name, category) in found_programs:
+                    by_category[category].append((exe, name))
+                
+                dialog = QDialog(self)
+                dialog.setWindowTitle("Found Programs")
+                dialog.setMinimumSize(450, 420)
+                
+                layout = QVBoxLayout(dialog)
+                layout.setSpacing(12)
+                layout.setContentsMargins(20, 20, 20, 20)
+                
+                title = SubtitleLabel(f"Found {len(found_programs)} programs")
+                layout.addWidget(title)
+                
+                helpText = BodyLabel("These programs will postpone tasks when running.\nSelect which ones to add:")
+                helpText.setWordWrap(True)
+                layout.addWidget(helpText)
+                
+                listWidget = QListWidget()
+                listWidget.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+                
+                category_icons = {'Game': '🎮', 'IDE': '💻', 'Productivity': '📊'}
+                for category in ['Game', 'IDE', 'Productivity']:
+                    if by_category[category]:
+                        header = QListWidgetItem(f"─── {category_icons[category]} {category}s ({len(by_category[category])}) ───")
+                        header.setFlags(header.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+                        listWidget.addItem(header)
+                        
+                        for exe, name in sorted(by_category[category], key=lambda x: x[1]):
+                            item = QListWidgetItem(f"    {name}")
+                            item.setData(Qt.ItemDataRole.UserRole, exe)
+                            item.setSelected(True)
+                            listWidget.addItem(item)
+                
+                layout.addWidget(listWidget)
+                
+                buttonLayout = QHBoxLayout()
+                cancelBtn = PushButton("Cancel")
+                cancelBtn.clicked.connect(dialog.reject)
+                addBtn = PrimaryPushButton("Add Selected")
+                
+                def add_selected():
+                    selected = [item.data(Qt.ItemDataRole.UserRole) for item in listWidget.selectedItems() if item.data(Qt.ItemDataRole.UserRole)]
+                    if selected:
+                        updated_list = current_blocklist + selected
+                        self.settings_manager.set('blocklist_processes', updated_list)
+                        InfoBar.success(
+                            title="Programs Added",
+                            content=f"Added {len(selected)} programs",
+                            orient=Qt.Orientation.Horizontal,
+                            isClosable=True,
+                            position=InfoBarPosition.TOP_RIGHT,
+                            duration=2000,
+                            parent=self
+                        )
+                    dialog.accept()
+                
+                addBtn.clicked.connect(add_selected)
+                buttonLayout.addStretch()
+                buttonLayout.addWidget(cancelBtn)
+                buttonLayout.addWidget(addBtn)
+                layout.addLayout(buttonLayout)
+                
+                dialog.exec()
+            else:
+                InfoBar.info(
+                    title="No Programs Found",
+                    content="No known games, IDEs, or productivity apps detected",
+                    orient=Qt.Orientation.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP_RIGHT,
+                    duration=3000,
+                    parent=self
+                )
+        
+        self._scanThread.progress.connect(update_progress)
+        self._scanThread.finished.connect(on_scan_complete)
+        self._scanThread.start()
+        progressDialog.exec()
     
     def reload_ui_text(self):
         """Reload all UI text with current language."""

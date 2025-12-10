@@ -4,7 +4,7 @@ Tests instantiation of SettingsInterface and LogDialog.
 """
 
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QWidget
 from qfluentwidgets import FluentWindow
 
 # Ensure QApplication exists

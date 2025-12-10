@@ -1,3 +1,43 @@
+## Changes for version 1.3.3
+- FEATURE: Smart AFK Sleep - 'Sleep after completion' now activates if user was AFK (no input) during the entire task, even if system wasn't woken by the task
+
+## Changes for version 1.3.2
+- FIX: Log Dialog crash - Resolved 'Could not open execution log' error caused by incorrect QSize import (PyQt6 migration regression)
+
+## Changes for version 1.3.1
+- FIX: Dark Mode White UI Bug - Implemented auto-recovery timer (3s) to restore dark theme when corrupted
+- NOTE: Root cause investigation pending - qfluentwidgets dark mode styling issue requires deeper analysis
+
+## Changes for version 1.3.0
+- FEATURE: Smart Auto Execution Mode - Intelligently postpones tasks when system is busy (CPU >50%, RAM >80%, user active, games/IDEs running)
+- FEATURE: Dashboard Emoji Indicators - Visual emojis for Schedule (📅 Once, 🔄 Daily, 📆 Weekly), Countdown (⏱️ Normal, ⏳ Postponed, ⏸️ Paused, ❌ Expired)
+- FEATURE: Color-coded Status Badges - Enabled (green), Disabled (blue), Postponed (orange), Running (purple pulse), Failed (red), Expired (gray)
+- FEATURE: Enhanced Log Dialog - Shows blocker process icons for postponed tasks, EXECUTED events logged with reasons
+- FEATURE: Postpone Timer - Countdown shows remaining time until retry with ⏳ indicator
+- FIX: White UI Bug - Replaced timer workaround with proper qconfig.themeChanged signal handler
+- FIX: Running status now clears when task finishes
+- FIX: Settings sync - Scheduler now reloads settings before checking execution mode
+- UX: Status badges centered in table cells
+- UX: Wider countdown/schedule columns for emoji text
+
+## Changes for version 1.2.3
+- FIX: Resolved crashes when adding/editing tasks (Qt.Horizontal enum)
+- FIX: Resolved crash on application exit (QSystemTrayIcon enum)
+
+## Changes for version 1.2.2
+- FIX: Resolved application crashes caused by missing translation keys (InfoBar NoneType error)
+- FIX: Hardened language manager against null values
+
+## Changes for version 1.2.1
+- FIX: Migrated to PyQt6 to resolve DLL load failures
+- FIX: Updated all UI components for PyQt6 compatibility
+
+## Changes for version 1.2.0
+- FEATURE: Visual Stuck Detection - Detects error dialogs and 'Update Required' windows using UI Automation
+- FEATURE: Smart Sleep - Intelligent sleep management based on task completion
+- IMPROVEMENT: Replaced unreliable OCR with robust pywinauto integration
+- FIX: Enhanced task monitoring reliability
+
 ## Changes for version 1.1.0
 - BETA RELEASE: Official Beta Launch!
 - FEATURE: Wake from Sleep - System wakes up automatically for scheduled tasks

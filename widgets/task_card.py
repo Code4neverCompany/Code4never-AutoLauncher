@@ -4,9 +4,9 @@ Modern card-based display for individual tasks.
 Replaces the traditional table row with a premium card layout.
 """
 
-from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtSignal, pyqtProperty, QSize
-from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QFont
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGraphicsDropShadowEffect
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtSignal, pyqtProperty, QSize
+from PyQt6.QtGui import QPainter, QColor, QPen, QPixmap, QFont
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGraphicsDropShadowEffect
 from qfluentwidgets import CardWidget, isDarkTheme
 from .countdown_indicator import CountdownIndicator
 from .status_badge import StatusBadge
@@ -95,13 +95,13 @@ class TaskCard(CardWidget):
         if icon_path:
             pixmap = QPixmap(str(icon_path))
             if not pixmap.isNull():
-                self.icon_label.setPixmap(pixmap.scaled(40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.icon_label.setPixmap(pixmap.scaled(40, 40, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
             else:
                 self.icon_label.setText("📄")
         else:
             self.icon_label.setText("📄")
         
-        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
     
     def _format_schedule(self):
         """Format schedule information."""
@@ -196,7 +196,7 @@ class TaskCard(CardWidget):
     
     def mousePressEvent(self, event):
         """Click - quick scale down."""
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._scale_animation.stop()
             self._scale_animation.setDuration(100)
             self._scale_animation.setStartValue(self._scale)
@@ -206,7 +206,7 @@ class TaskCard(CardWidget):
     
     def mouseReleaseEvent(self, event):
         """Release - return to hover scale."""
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._scale_animation.stop()
             self._scale_animation.setDuration(150)
             self._scale_animation.setStartValue(self._scale)

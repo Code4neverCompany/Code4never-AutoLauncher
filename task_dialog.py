@@ -5,8 +5,8 @@ Provides a modern Fluent Design dialog for adding and editing scheduled tasks.
 
 from datetime import datetime
 from pathlib import Path
-from PyQt5.QtCore import Qt, QDate, QTime, QPoint, QTimer
-from PyQt5.QtWidgets import QFileDialog
+from PyQt6.QtCore import Qt, QDate, QTime, QPoint, QTimer
+from PyQt6.QtWidgets import QFileDialog
 from qfluentwidgets import (
     MessageBoxBase,
     SubtitleLabel,
@@ -67,7 +67,7 @@ class TaskDialog(MessageBoxBase):
         
         # Enable mouse tracking for dragging
         self.titleLabel.setMouseTracking(True)
-        self.titleLabel.setCursor(Qt.OpenHandCursor)
+        self.titleLabel.setCursor(Qt.CursorShape.OpenHandCursor)
         
         logger.debug(f"TaskDialog initialized in {'edit' if self.is_edit_mode else 'add'} mode")
     
@@ -121,8 +121,8 @@ class TaskDialog(MessageBoxBase):
         # Set to current time using QTime
         self.timePicker.setTime(QTime(now.hour, now.minute))
         # Enable wheel events on time picker
-        self.timePicker.setFocusPolicy(Qt.WheelFocus)
-        self.timePicker.setAttribute(Qt.WA_AcceptTouchEvents, False)  # Prioritize mouse wheel
+        self.timePicker.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
+        self.timePicker.setAttribute(Qt.WidgetAttribute.WA_AcceptTouchEvents, False)  # Prioritize mouse wheel
         
         # Add widgets to layout
         self.viewLayout.addWidget(self.titleLabel)
@@ -196,14 +196,14 @@ class TaskDialog(MessageBoxBase):
         """Open file browser to select an executable."""
         # Use QFileDialog instance instead of static method to set options
         dialog = QFileDialog(self, get_text('dialog.select_program'))
-        dialog.setFileMode(QFileDialog.ExistingFile)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         dialog.setNameFilter("Executable Files (*.exe *.lnk);;All Files (*.*)")
         
         # CRITICAL: Prevent automatic shortcut resolution
         # We want to select the .lnk file itself, not its target
-        dialog.setOption(QFileDialog.DontResolveSymlinks, True)
+        dialog.setOption(QFileDialog.Option.DontResolveSymlinks, True)
         
-        if dialog.exec_():  # PyQt5 uses exec_()
+        if dialog.exec():  # PyQt6 uses exec()
             selected_files = dialog.selectedFiles()
             if selected_files:
                 file_path = selected_files[0]
@@ -366,14 +366,14 @@ class TaskDialog(MessageBoxBase):
     
     def mousePressEvent(self, event):
         """Handle mouse press for window dragging."""
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             # Check if click is on title area (top 60 pixels)
             if event.pos().y() < 60:
                 self.dragging = True
-                # PyQt5 uses globalPos()
-                global_pos = event.globalPos()
+                # PyQt6 uses globalPosition().toPoint()
+                global_pos = event.globalPosition().toPoint()
                 self.drag_position = global_pos - self.frameGeometry().topLeft()
-                self.titleLabel.setCursor(Qt.ClosedHandCursor)
+                self.titleLabel.setCursor(Qt.CursorShape.ClosedHandCursor)
                 event.accept()
             else:
                 super().mousePressEvent(event)
@@ -382,9 +382,9 @@ class TaskDialog(MessageBoxBase):
     
     def mouseMoveEvent(self, event):
         """Handle mouse move for window dragging."""
-        if self.dragging and event.buttons() == Qt.LeftButton:
-            # PyQt5 uses globalPos()
-            global_pos = event.globalPos()
+        if self.dragging and event.buttons() == Qt.MouseButton.LeftButton:
+            # PyQt6 uses globalPosition().toPoint()
+            global_pos = event.globalPosition().toPoint()
             self.move(global_pos - self.drag_position)
             event.accept()
         else:
@@ -392,9 +392,9 @@ class TaskDialog(MessageBoxBase):
     
     def mouseReleaseEvent(self, event):
         """Handle mouse release to stop dragging."""
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.dragging = False
-            self.titleLabel.setCursor(Qt.OpenHandCursor)
+            self.titleLabel.setCursor(Qt.CursorShape.OpenHandCursor)
             event.accept()
         else:
             super().mouseReleaseEvent(event)
@@ -415,8 +415,8 @@ class TaskDialog(MessageBoxBase):
         """Handle mouse wheel for time adjustment."""
         # Check if mouse is over the time picker
         time_picker_geometry = self.timePicker.geometry()
-        # PyQt5 uses globalPos()
-        global_pos = event.globalPos()
+        # PyQt6 uses globalPosition().toPoint()
+        global_pos = event.globalPosition().toPoint()
         mouse_pos = self.mapFromGlobal(global_pos)
         
         if time_picker_geometry.contains(mouse_pos):

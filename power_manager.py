@@ -175,3 +175,70 @@ class PowerManager:
         except Exception as e:
             logger.error(f"Error stopping keep awake: {e}")
             return False
+
+    def get_last_wake_info(self) -> dict:
+        """
+        Get information about the last system wake event.
+        Returns a dict with 'wake_source' (str) and 'wake_time' (datetime).
+        """
+        try:
+            # Use PowerShell to get the last wake event from the System event log
+            # Event ID 1 from Microsoft-Windows-Power-Troubleshooter
+            cmd = (
+                "Get-WinEvent -LogName System -ProviderName Microsoft-Windows-Power-Troubleshooter "
+                "-MaxEvents 1 | Select-Object -Property TimeCreated, @{N='WakeSource';E={$_.Properties[1].Value}} "
+                "| ConvertTo-Json"
+            )
+            
+            # Run PowerShell command
+            import subprocess
+            import json
+            
+            result = subprocess.run(
+                ["powershell", "-Command", cmd], 
+                capture_output=True, 
+                text=True, 
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            
+            if result.returncode != 0:
+                logger.warning(f"Failed to get wake info: {result.stderr}")
+                return None
+                
+            data = json.loads(result.stdout)
+            
+            # Parse time
+            # PowerShell JSON date format: "/Date(1733331234000)/" or ISO string depending on PS version
+            # Usually ConvertTo-Json returns ISO-like string in newer PS, or the /Date/ format.
+            # Let's handle the ISO format which is standard in modern PS Core, 
+            # but Windows PowerShell 5.1 (default) might return /Date(...)/.
+            
+            time_str = data.get('TimeCreated')
+            wake_source = data.get('WakeSource', 'Unknown')
+            
+            wake_time = None
+            
+            if time_str:
+                if "/Date(" in time_str:
+                    # Handle legacy format
+                    import re
+                    timestamp_ms = int(re.search(r'\d+', time_str).group())
+                    wake_time = datetime.fromtimestamp(timestamp_ms / 1000.0)
+                else:
+                    # Handle ISO format
+                    # Might need dateutil for robust parsing, but let's try standard
+                    # Example: "2025-11-26T10:00:00"
+                    try:
+                        wake_time = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
+                    except:
+                        # Fallback
+                        pass
+            
+            return {
+                'wake_source': str(wake_source),
+                'wake_time': wake_time
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting last wake info: {e}")
+            return None

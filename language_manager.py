@@ -123,7 +123,11 @@ class LanguageManager:
         try:
             for key in keys:
                 result = result[key]
-            return result
+            
+            if result is None:
+                return key_path
+                
+            return str(result)
         except (KeyError, TypeError):
             logger.debug(f"Translation key not found: {key_path}")
             return key_path

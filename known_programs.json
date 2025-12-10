@@ -1,0 +1,631 @@
+{
+    "version": "1.0.0",
+    "last_updated": "2025-12-10",
+    "description": "Known programs for blocklist scanning. Categories: Game, IDE, Productivity",
+    "programs": {
+        "valorant.exe": [
+            "Valorant",
+            "Game"
+        ],
+        "valorant-win64-shipping.exe": [
+            "Valorant",
+            "Game"
+        ],
+        "leagueclient.exe": [
+            "League of Legends",
+            "Game"
+        ],
+        "league of legends.exe": [
+            "League of Legends",
+            "Game"
+        ],
+        "riotclientservices.exe": [
+            "Riot Client",
+            "Game"
+        ],
+        "cs2.exe": [
+            "Counter-Strike 2",
+            "Game"
+        ],
+        "csgo.exe": [
+            "CS:GO",
+            "Game"
+        ],
+        "dota2.exe": [
+            "Dota 2",
+            "Game"
+        ],
+        "hl2.exe": [
+            "Half-Life 2",
+            "Game"
+        ],
+        "portal2.exe": [
+            "Portal 2",
+            "Game"
+        ],
+        "left4dead2.exe": [
+            "Left 4 Dead 2",
+            "Game"
+        ],
+        "deadlock.exe": [
+            "Deadlock",
+            "Game"
+        ],
+        "fortnite.exe": [
+            "Fortnite",
+            "Game"
+        ],
+        "fortniteclient-win64-shipping.exe": [
+            "Fortnite",
+            "Game"
+        ],
+        "rocketleague.exe": [
+            "Rocket League",
+            "Game"
+        ],
+        "gta5.exe": [
+            "Grand Theft Auto V",
+            "Game"
+        ],
+        "gtavlauncher.exe": [
+            "GTA V Launcher",
+            "Game"
+        ],
+        "rdr2.exe": [
+            "Red Dead Redemption 2",
+            "Game"
+        ],
+        "playgta5.exe": [
+            "GTA V",
+            "Game"
+        ],
+        "overwatch.exe": [
+            "Overwatch 2",
+            "Game"
+        ],
+        "wow.exe": [
+            "World of Warcraft",
+            "Game"
+        ],
+        "wowclassic.exe": [
+            "WoW Classic",
+            "Game"
+        ],
+        "diablo iv.exe": [
+            "Diablo IV",
+            "Game"
+        ],
+        "diablo3.exe": [
+            "Diablo III",
+            "Game"
+        ],
+        "hearthstone.exe": [
+            "Hearthstone",
+            "Game"
+        ],
+        "starcraft ii.exe": [
+            "StarCraft II",
+            "Game"
+        ],
+        "apex_legends.exe": [
+            "Apex Legends",
+            "Game"
+        ],
+        "r5apex.exe": [
+            "Apex Legends",
+            "Game"
+        ],
+        "fifa24.exe": [
+            "EA FC 24",
+            "Game"
+        ],
+        "bf2042.exe": [
+            "Battlefield 2042",
+            "Game"
+        ],
+        "theSimsEA.exe": [
+            "The Sims 4",
+            "Game"
+        ],
+        "nfs.exe": [
+            "Need for Speed",
+            "Game"
+        ],
+        "cod.exe": [
+            "Call of Duty",
+            "Game"
+        ],
+        "modernwarfare.exe": [
+            "Modern Warfare",
+            "Game"
+        ],
+        "blackopscoldwar.exe": [
+            "Black Ops Cold War",
+            "Game"
+        ],
+        "codwarzone.exe": [
+            "Warzone",
+            "Game"
+        ],
+        "anno1800.exe": [
+            "Anno 1800",
+            "Game"
+        ],
+        "anno117.exe": [
+            "Anno 117",
+            "Game"
+        ],
+        "assassinscreed.exe": [
+            "Assassin's Creed",
+            "Game"
+        ],
+        "acvalhalla.exe": [
+            "AC Valhalla",
+            "Game"
+        ],
+        "farcry6.exe": [
+            "Far Cry 6",
+            "Game"
+        ],
+        "rainbowsix.exe": [
+            "Rainbow Six Siege",
+            "Game"
+        ],
+        "r6-siege.exe": [
+            "Rainbow Six Siege",
+            "Game"
+        ],
+        "watchdogs.exe": [
+            "Watch Dogs",
+            "Game"
+        ],
+        "thedivision2.exe": [
+            "The Division 2",
+            "Game"
+        ],
+        "eldenring.exe": [
+            "Elden Ring",
+            "Game"
+        ],
+        "darksouls3.exe": [
+            "Dark Souls III",
+            "Game"
+        ],
+        "sekiro.exe": [
+            "Sekiro",
+            "Game"
+        ],
+        "armoredcore6.exe": [
+            "Armored Core VI",
+            "Game"
+        ],
+        "baldursgate3.exe": [
+            "Baldur's Gate 3",
+            "Game"
+        ],
+        "bg3.exe": [
+            "Baldur's Gate 3",
+            "Game"
+        ],
+        "bg3_dx11.exe": [
+            "Baldur's Gate 3",
+            "Game"
+        ],
+        "cyberpunk2077.exe": [
+            "Cyberpunk 2077",
+            "Game"
+        ],
+        "witcher3.exe": [
+            "The Witcher 3",
+            "Game"
+        ],
+        "starfield.exe": [
+            "Starfield",
+            "Game"
+        ],
+        "skyrim.exe": [
+            "Skyrim",
+            "Game"
+        ],
+        "skyrimse.exe": [
+            "Skyrim SE",
+            "Game"
+        ],
+        "fallout4.exe": [
+            "Fallout 4",
+            "Game"
+        ],
+        "hogwartslegacy.exe": [
+            "Hogwarts Legacy",
+            "Game"
+        ],
+        "pathofexile.exe": [
+            "Path of Exile",
+            "Game"
+        ],
+        "pathofexile_x64.exe": [
+            "Path of Exile",
+            "Game"
+        ],
+        "greedfall.exe": [
+            "Greedfall",
+            "Game"
+        ],
+        "clair obscur expedition 33.exe": [
+            "Clair Obscur: Expedition 33",
+            "Game"
+        ],
+        "clairobscur.exe": [
+            "Clair Obscur",
+            "Game"
+        ],
+        "destiny2.exe": [
+            "Destiny 2",
+            "Game"
+        ],
+        "monsterhunterworld.exe": [
+            "Monster Hunter World",
+            "Game"
+        ],
+        "monsterhunterrise.exe": [
+            "Monster Hunter Rise",
+            "Game"
+        ],
+        "devilmaycry5.exe": [
+            "Devil May Cry 5",
+            "Game"
+        ],
+        "godofwar.exe": [
+            "God of War",
+            "Game"
+        ],
+        "horizonzerodawn.exe": [
+            "Horizon Zero Dawn",
+            "Game"
+        ],
+        "spiderman.exe": [
+            "Spider-Man",
+            "Game"
+        ],
+        "ghostoftsushima.exe": [
+            "Ghost of Tsushima",
+            "Game"
+        ],
+        "liesthep.exe": [
+            "Lies of P",
+            "Game"
+        ],
+        "pubg.exe": [
+            "PUBG",
+            "Game"
+        ],
+        "tslgame.exe": [
+            "PUBG",
+            "Game"
+        ],
+        "helldivers2.exe": [
+            "Helldivers 2",
+            "Game"
+        ],
+        "arma3.exe": [
+            "Arma 3",
+            "Game"
+        ],
+        "escapefromtarkov.exe": [
+            "Escape from Tarkov",
+            "Game"
+        ],
+        "squad.exe": [
+            "Squad",
+            "Game"
+        ],
+        "civ6.exe": [
+            "Civilization VI",
+            "Game"
+        ],
+        "civ7.exe": [
+            "Civilization VII",
+            "Game"
+        ],
+        "aoe4.exe": [
+            "Age of Empires 4",
+            "Game"
+        ],
+        "totalwar.exe": [
+            "Total War",
+            "Game"
+        ],
+        "stellaris.exe": [
+            "Stellaris",
+            "Game"
+        ],
+        "crusaderkings3.exe": [
+            "Crusader Kings 3",
+            "Game"
+        ],
+        "eu4.exe": [
+            "Europa Universalis IV",
+            "Game"
+        ],
+        "hoi4.exe": [
+            "Hearts of Iron IV",
+            "Game"
+        ],
+        "forzahorizon5.exe": [
+            "Forza Horizon 5",
+            "Game"
+        ],
+        "forzamotorsport.exe": [
+            "Forza Motorsport",
+            "Game"
+        ],
+        "assettocorsa.exe": [
+            "Assetto Corsa",
+            "Game"
+        ],
+        "acc.exe": [
+            "Assetto Corsa Competizione",
+            "Game"
+        ],
+        "f1_23.exe": [
+            "F1 23",
+            "Game"
+        ],
+        "ffxiv.exe": [
+            "Final Fantasy XIV",
+            "Game"
+        ],
+        "ffxiv_dx11.exe": [
+            "Final Fantasy XIV",
+            "Game"
+        ],
+        "gw2.exe": [
+            "Guild Wars 2",
+            "Game"
+        ],
+        "eso.exe": [
+            "Elder Scrolls Online",
+            "Game"
+        ],
+        "newworld.exe": [
+            "New World",
+            "Game"
+        ],
+        "lostark.exe": [
+            "Lost Ark",
+            "Game"
+        ],
+        "minecraft.exe": [
+            "Minecraft",
+            "Game"
+        ],
+        "javaw.exe": [
+            "Minecraft/Java",
+            "Game"
+        ],
+        "minecraftlauncher.exe": [
+            "Minecraft Launcher",
+            "Game"
+        ],
+        "terraria.exe": [
+            "Terraria",
+            "Game"
+        ],
+        "valheim.exe": [
+            "Valheim",
+            "Game"
+        ],
+        "satisfactory.exe": [
+            "Satisfactory",
+            "Game"
+        ],
+        "factorio.exe": [
+            "Factorio",
+            "Game"
+        ],
+        "phasmophobia.exe": [
+            "Phasmophobia",
+            "Game"
+        ],
+        "deadbydaylight-win64-shipping.exe": [
+            "Dead by Daylight",
+            "Game"
+        ],
+        "theforest.exe": [
+            "The Forest",
+            "Game"
+        ],
+        "sonsoftheforest.exe": [
+            "Sons of the Forest",
+            "Game"
+        ],
+        "lethalcompany.exe": [
+            "Lethal Company",
+            "Game"
+        ],
+        "wutheringwaves.exe": [
+            "Wuthering Waves",
+            "Game"
+        ],
+        "client-win64-shipping.exe": [
+            "Wuthering Waves",
+            "Game"
+        ],
+        "genshinimpact.exe": [
+            "Genshin Impact",
+            "Game"
+        ],
+        "starrail.exe": [
+            "Honkai: Star Rail",
+            "Game"
+        ],
+        "zenlesszonezero.exe": [
+            "Zenless Zone Zero",
+            "Game"
+        ],
+        "blackmyth.exe": [
+            "Black Myth: Wukong",
+            "Game"
+        ],
+        "b1-wukong-win64-shipping.exe": [
+            "Black Myth: Wukong",
+            "Game"
+        ],
+        "nioh2.exe": [
+            "Nioh 2",
+            "Game"
+        ],
+        "persona5.exe": [
+            "Persona 5 Royal",
+            "Game"
+        ],
+        "code.exe": [
+            "Visual Studio Code",
+            "IDE"
+        ],
+        "devenv.exe": [
+            "Visual Studio",
+            "IDE"
+        ],
+        "pycharm64.exe": [
+            "PyCharm",
+            "IDE"
+        ],
+        "pycharm.exe": [
+            "PyCharm",
+            "IDE"
+        ],
+        "idea64.exe": [
+            "IntelliJ IDEA",
+            "IDE"
+        ],
+        "idea.exe": [
+            "IntelliJ IDEA",
+            "IDE"
+        ],
+        "webstorm64.exe": [
+            "WebStorm",
+            "IDE"
+        ],
+        "sublime_text.exe": [
+            "Sublime Text",
+            "IDE"
+        ],
+        "atom.exe": [
+            "Atom",
+            "IDE"
+        ],
+        "notepad++.exe": [
+            "Notepad++",
+            "IDE"
+        ],
+        "cursor.exe": [
+            "Cursor AI",
+            "IDE"
+        ],
+        "windsurf.exe": [
+            "Windsurf",
+            "IDE"
+        ],
+        "android studio64.exe": [
+            "Android Studio",
+            "IDE"
+        ],
+        "eclipse.exe": [
+            "Eclipse",
+            "IDE"
+        ],
+        "rider64.exe": [
+            "JetBrains Rider",
+            "IDE"
+        ],
+        "goland64.exe": [
+            "GoLand",
+            "IDE"
+        ],
+        "clion64.exe": [
+            "CLion",
+            "IDE"
+        ],
+        "rubymine64.exe": [
+            "RubyMine",
+            "IDE"
+        ],
+        "datagrip64.exe": [
+            "DataGrip",
+            "IDE"
+        ],
+        "figma.exe": [
+            "Figma",
+            "Productivity"
+        ],
+        "notion.exe": [
+            "Notion",
+            "Productivity"
+        ],
+        "obsidian.exe": [
+            "Obsidian",
+            "Productivity"
+        ],
+        "slack.exe": [
+            "Slack",
+            "Productivity"
+        ],
+        "zoom.exe": [
+            "Zoom",
+            "Productivity"
+        ],
+        "teams.exe": [
+            "Microsoft Teams",
+            "Productivity"
+        ],
+        "obs64.exe": [
+            "OBS Studio",
+            "Productivity"
+        ],
+        "obs32.exe": [
+            "OBS Studio",
+            "Productivity"
+        ],
+        "streamlabs obs.exe": [
+            "Streamlabs",
+            "Productivity"
+        ],
+        "davinciresolve.exe": [
+            "DaVinci Resolve",
+            "Productivity"
+        ],
+        "premiere pro.exe": [
+            "Adobe Premiere",
+            "Productivity"
+        ],
+        "afterfx.exe": [
+            "After Effects",
+            "Productivity"
+        ],
+        "photoshop.exe": [
+            "Photoshop",
+            "Productivity"
+        ],
+        "illustrator.exe": [
+            "Illustrator",
+            "Productivity"
+        ],
+        "blender.exe": [
+            "Blender",
+            "Productivity"
+        ],
+        "unity.exe": [
+            "Unity",
+            "Productivity"
+        ],
+        "unrealengine.exe": [
+            "Unreal Engine",
+            "Productivity"
+        ],
+        "godot.exe": [
+            "Godot",
+            "Productivity"
+        ]
+    }
+}

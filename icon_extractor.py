@@ -8,8 +8,8 @@ import sys
 import ctypes
 from ctypes import windll, c_int, c_void_p, POINTER, byref
 from typing import Optional
-from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import Qt
+from PyQt6.QtGui import QPixmap, QImage
+from PyQt6.QtCore import Qt
 
 from logger import get_logger
 
@@ -238,9 +238,11 @@ def hicon_to_pixmap(hicon: int) -> Optional[QPixmap]:
     """
     try:
         # Get icon info
-        from PyQt5.QtWinExtras import QtWin
-        pixmap = QtWin.fromHICON(hicon)
-        return pixmap
+        # PyQt6 has QImage.fromHICON
+        image = QImage.fromHICON(hicon)
+        if not image.isNull():
+            return QPixmap.fromImage(image)
+        return None
         
     except ImportError:
         # QtWinExtras not available, use alternative method
@@ -294,3 +296,35 @@ def clear_icon_cache():
     global _icon_cache
     _icon_cache.clear()
     logger.info("Icon cache cleared")
+
+
+def get_process_icon(process_name: str) -> Optional[str]:
+    """
+    Get icon path for a running process by its name.
+    
+    Args:
+        process_name: Name of the process (e.g., 'code.exe', 'Antigravity.exe')
+        
+    Returns:
+        Path to the extracted icon file, or None if extraction fails
+    """
+    try:
+        import psutil
+        
+        # Find the process and get its executable path
+        for proc in psutil.process_iter(['name', 'exe']):
+            try:
+                if proc.info['name'] and proc.info['name'].lower() == process_name.lower():
+                    exe_path = proc.info['exe']
+                    if exe_path and os.path.exists(exe_path):
+                        return extract_icon_from_path(exe_path)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+        
+        logger.debug(f"Process not found or no exe path: {process_name}")
+        return None
+        
+    except Exception as e:
+        logger.debug(f"Error getting process icon for {process_name}: {e}")
+        return None
+

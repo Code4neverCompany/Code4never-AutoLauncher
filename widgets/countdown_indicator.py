@@ -3,9 +3,9 @@ CountdownIndicator Widget
 Visual countdown display with circular progress or horizontal bar.
 """
 
-from PyQt5.QtCore import Qt, QRectF, QPropertyAnimation, QEasingCurve, pyqtProperty
-from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QLinearGradient
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import Qt, QRectF, QPropertyAnimation, QEasingCurve, pyqtProperty
+from PyQt6.QtGui import QPainter, QPen, QColor, QFont, QLinearGradient
+from PyQt6.QtWidgets import QWidget
 from datetime import timedelta
 
 
@@ -74,7 +74,7 @@ class CountdownIndicator(QWidget):
     def paintEvent(self, event):
         """Custom paint for progress bar."""
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
         # Get theme-aware colors
         from qfluentwidgets import isDarkTheme
@@ -94,14 +94,14 @@ class CountdownIndicator(QWidget):
         font = QFont("Segoe UI", 9)
         painter.setFont(font)
         painter.setPen(text_color)
-        painter.drawText(0, 0, self.width(), 20, Qt.AlignLeft | Qt.AlignVCenter, f"⏱ {time_text}")
+        painter.drawText(0, 0, self.width(), 20, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, f"⏱ {time_text}")
         
         # Draw progress bar background
         bar_y = 22
         bar_height = 6
         bar_rect = QRectF(0, bar_y, self.width(), bar_height)
         painter.setBrush(bg_color)
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(bar_rect, 3, 3)
         
         # Draw progress bar fill
@@ -122,4 +122,4 @@ class CountdownIndicator(QWidget):
             percent = int(self._progress * 100)
             painter.setPen(QPen(text_color.lighter(130), 1))
             painter.setFont(QFont("Segoe UI", 7))
-            painter.drawText(self.width() - 35, 0, 35, 20, Qt.AlignRight | Qt.AlignVCenter, f"{percent}%")
+            painter.drawText(self.width() - 35, 0, 35, 20, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, f"{percent}%")

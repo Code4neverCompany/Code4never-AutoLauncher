@@ -39,10 +39,10 @@ all_datas = added_files + qfluentwidgets_datas
 
 # Hidden imports for PyQt5 and qfluentwidgets
 hiddenimports = [
-    'PyQt5.QtCore',
-    'PyQt5.QtGui',
-    'PyQt5.QtWidgets',
-    'PyQt5.QtSvg',
+    'PyQt6.QtCore',
+    'PyQt6.QtGui',
+    'PyQt6.QtWidgets',
+    'PyQt6.QtSvg',
     'requests',
     'qfluentwidgets',
     'qfluentwidgets.components',
@@ -56,6 +56,15 @@ hiddenimports = [
     'apscheduler.triggers.cron',
     'apscheduler.triggers.date',
     'apscheduler.triggers.interval',
+    'pywinauto',
+    'pywinauto.application',
+    'pywinauto.backend',
+    'pywinauto.backends.uia',
+    'comtypes',
+    'comtypes.client',
+    'comtypes.gen',
+    'six',
+    'uuid',
 ]
 
 a = Analysis(
@@ -67,7 +76,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['PySide6', 'PyQt6', 'PySide2', 'tkinter'],
+    excludes=['PySide6', 'PyQt5', 'PySide2', 'tkinter'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

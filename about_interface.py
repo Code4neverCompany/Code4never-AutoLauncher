@@ -1,8 +1,8 @@
-from PyQt5.QtCore import Qt, pyqtSignal as Signal, QThread, QSize, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QApplication, QFrame, QGraphicsOpacityEffect
+from PyQt6.QtCore import Qt, pyqtSignal as Signal, QThread, QSize, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QApplication, QFrame, QGraphicsOpacityEffect
 import subprocess
 import os
-from PyQt5.QtGui import QColor, QFont
+from PyQt6.QtGui import QColor, QFont
 from qfluentwidgets import (
     ScrollArea,
     SettingCardGroup,
@@ -67,7 +67,7 @@ A: Click the 'Open Logs' button in the About tab to open the logs folder."""
         top_window
     )
     # Ensure the dialog stays on top
-    w.setWindowFlags(w.windowFlags() | Qt.WindowStaysOnTopHint)
+    w.setWindowFlags(w.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
     # Hide the Cancel button - FAQ is just informational
     w.cancelButton.hide()
     w.exec()
@@ -193,8 +193,8 @@ class UpdateDashboard(CardWidget):
         
         # Separator
         line = QFrame(self)
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
         line.setStyleSheet("background-color: rgba(0, 0, 0, 0.1); max-height: 1px;")
         self.vBoxLayout.addWidget(line)
         
@@ -412,7 +412,7 @@ class UpdateDashboard(CardWidget):
             InfoBar.error(
                 title="Error",
                 content="Could not open logs folder.",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
@@ -459,7 +459,7 @@ class AboutInterface(ScrollArea):
         """Initialize the UI components."""
         
         # Configure layout
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         
@@ -509,7 +509,7 @@ class AboutInterface(ScrollArea):
             InfoBar.error(
                 title="Update Check Failed",
                 content=error_msg,
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=5000,
@@ -522,7 +522,7 @@ class AboutInterface(ScrollArea):
             InfoBar.success(
                 title="Up to Date",
                 content="You are using the latest version.",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
@@ -541,7 +541,7 @@ class AboutInterface(ScrollArea):
              InfoBar.error(
                 title="Download Error",
                 content="No executable found in release assets.",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=5000,
@@ -554,7 +554,7 @@ class AboutInterface(ScrollArea):
         self.updateBar = InfoBar.info(
             title="Updating",
             content="Downloading update package...",
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=False,
             position=InfoBarPosition.TOP_RIGHT,
             duration=-1,
@@ -584,7 +584,7 @@ class AboutInterface(ScrollArea):
         InfoBar.success(
             title="Update Ready",
             content="Restarting to install update...",
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=False,
             position=InfoBarPosition.TOP_RIGHT,
             duration=3000,
@@ -599,7 +599,7 @@ class AboutInterface(ScrollArea):
             InfoBar.error(
                 title="Installation Failed",
                 content="Could not install update.",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=5000,
@@ -614,7 +614,7 @@ class AboutInterface(ScrollArea):
         InfoBar.error(
             title="Update Failed",
             content=error_msg,
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP_RIGHT,
             duration=5000,

@@ -57,7 +57,7 @@ def test_scheduler_integration():
     print("\n--- Testing Scheduler Integration ---")
     try:
         # We need a QApplication for TaskScheduler because it inherits QObject
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         if not QApplication.instance():
             app = QApplication(sys.argv)
             

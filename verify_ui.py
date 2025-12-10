@@ -1,6 +1,6 @@
 
 import sys
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 from about_interface import AboutInterface
 
 def verify_ui():

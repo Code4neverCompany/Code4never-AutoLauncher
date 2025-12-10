@@ -61,15 +61,23 @@ class ExecutionLogger:
         except Exception as e:
             logger.error(f"Failed to write execution log: {e}")
             
-    def log_event(self, task_id: int, task_name: str, event_type: str, details: str = ""):
+    def log_event(self, task_id: int, task_name: str, event_type: str, details: str = "", **kwargs):
         """
         Log a task execution event.
         
         Args:
             task_id: ID of the task
             task_name: Name of the task
-            event_type: Type of event (STARTED, FINISHED, FAILED, POSTPONED, SKIPPED)
+            event_type: Type of event:
+                - STARTED: Task execution began
+                - FINISHED: Task execution completed
+                - FAILED: Task execution failed
+                - POSTPONED: Task was postponed due to user activity
+                - MISSED: Task missed scheduled time (system unavailable)
+                - WAKE_SCHEDULED: Wake timer was set for task
+                - WAKE_SUCCESS: System woke successfully for task
             details: Optional details about the event
+            **kwargs: Additional fields (e.g., scheduled_time for MISSED events)
         """
         entry = {
             "timestamp": datetime.now().isoformat(),
@@ -78,6 +86,10 @@ class ExecutionLogger:
             "event_type": event_type,
             "details": details
         }
+        
+        # Add any additional fields from kwargs
+        if 'scheduled_time' in kwargs:
+            entry['scheduled_time'] = kwargs['scheduled_time']
         
         entries = self._read_log()
         entries.append(entry)

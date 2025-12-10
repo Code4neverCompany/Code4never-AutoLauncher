@@ -7,16 +7,21 @@ Executes programs at scheduled times without blocking the Qt event loop.
 import subprocess
 import ctypes
 import time
+import psutil
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from pathlib import Path
 import threading
 from power_manager import PowerManager
+from stuck_detector import StuckDetector
+from config import STUCK_DETECTION_KEYWORDS, STUCK_DETECTION_OCR_KEYWORDS
+from input_monitor import get_input_monitor, start_input_monitor
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
 
 from logger import get_logger
 from task_manager import SettingsManager
@@ -48,7 +53,15 @@ class TaskScheduler(QObject):
         Initialize the TaskScheduler with a BackgroundScheduler.
         """
         super().__init__()
-        self.scheduler = BackgroundScheduler()
+        # Configure APScheduler with misfire handling
+        # - misfire_grace_time: Jobs can be up to 5 minutes late and still run
+        # - coalesce: If multiple runs were missed, only run once
+        self.scheduler = BackgroundScheduler(
+            job_defaults={
+                'misfire_grace_time': 300,  # 5 minute grace period
+                'coalesce': True  # Combine multiple missed runs into one
+            }
+        )
         self.scheduler.start()
         
         self.settings_manager = SettingsManager()
@@ -60,8 +73,17 @@ class TaskScheduler(QObject):
         
         # Initialize Power Manager
         self.power_manager = PowerManager()
+        self.stuck_detector = StuckDetector()
         self._keep_awake_counter = 0
         self._keep_awake_lock = threading.Lock()
+        
+        # Start the input monitor for real input detection
+        start_input_monitor()
+        self._input_monitor = get_input_monitor()
+        
+        # Add event listeners for job execution monitoring
+        self.scheduler.add_listener(self._on_job_missed, EVENT_JOB_MISSED)
+        self.scheduler.add_listener(self._on_job_error, EVENT_JOB_ERROR)
         
         logger.info("TaskScheduler initialized and started")
     
@@ -77,7 +99,143 @@ class TaskScheduler(QObject):
             return millis / 1000.0
         else:
             return 0
+    
+    def _is_system_busy(self) -> tuple:
+        """
+        Check if the system is currently busy based on multiple factors.
+        
+        Returns:
+            tuple: (is_busy: bool, reason: str)
+        """
+        reasons = []
+        
+        # Thresholds (configurable in future)
+        CPU_THRESHOLD = 50  # percent
+        RAM_THRESHOLD = 80  # percent
+        GPU_THRESHOLD = 50  # percent
+        IDLE_THRESHOLD = 60  # seconds
+        
+        # Load user-configured blocklist (falls back to defaults)
+        from config import DEFAULT_BLOCKLIST_PROCESSES
+        user_blocklist = self.settings_manager.get('blocklist_processes', None)
+        if user_blocklist is None:
+            user_blocklist = DEFAULT_BLOCKLIST_PROCESSES
+        
+        # Convert to lowercase set for efficient lookup
+        BLOCKLIST_PROCESSES = set(p.lower() for p in user_blocklist)
+        
+        # 1. Check CPU usage
+        try:
+            cpu_percent = psutil.cpu_percent(interval=0.5)
+            if cpu_percent > CPU_THRESHOLD:
+                reasons.append(f"CPU at {cpu_percent:.0f}%")
+        except Exception as e:
+            logger.debug(f"CPU check failed: {e}")
+        
+        # 2. Check RAM usage
+        try:
+            ram = psutil.virtual_memory()
+            if ram.percent > RAM_THRESHOLD:
+                reasons.append(f"RAM at {ram.percent:.0f}%")
+        except Exception as e:
+            logger.debug(f"RAM check failed: {e}")
+        
+        # 3. Check GPU usage (optional - requires GPUtil)
+        try:
+            import GPUtil
+            gpus = GPUtil.getGPUs()
+            if gpus:
+                gpu_load = max(gpu.load * 100 for gpu in gpus)
+                if gpu_load > GPU_THRESHOLD:
+                    reasons.append(f"GPU at {gpu_load:.0f}%")
+        except ImportError:
+            pass  # GPUtil not installed, skip GPU check
+        except Exception as e:
+            logger.debug(f"GPU check failed: {e}")
+        
+        # 4. Check keyboard/mouse idle time
+        idle_time = self._get_idle_time()
+        if idle_time < IDLE_THRESHOLD:
+            reasons.append(f"User active (idle {idle_time:.0f}s)")
+        
+        # 5. Check for known games/apps running
+        try:
+            running_blocklist = []
+            for proc in psutil.process_iter(['name']):
+                try:
+                    proc_name = proc.info['name'].lower()
+                    if proc_name in BLOCKLIST_PROCESSES:
+                        running_blocklist.append(proc.info['name'])
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
             
+            if running_blocklist:
+                # Deduplicate
+                unique_apps = list(set(running_blocklist))[:3]  # Show max 3
+                reasons.append(f"Running: {', '.join(unique_apps)}")
+        except Exception as e:
+            logger.debug(f"Process check failed: {e}")
+        
+        if reasons:
+            return (True, "; ".join(reasons))
+        else:
+            return (False, "System is idle")
+    
+    def _on_job_missed(self, event):
+        """
+        Handle APScheduler job missed event.
+        Logs when a scheduled job was missed (beyond misfire_grace_time).
+        """
+        try:
+            job = self.scheduler.get_job(event.job_id)
+            if job and job.args and len(job.args) > 0:
+                task = job.args[0]
+                task_id = task.get('id', 0)
+                task_name = task.get('name', 'Unknown')
+                
+                # Calculate how late we were
+                scheduled_time = event.scheduled_run_time
+                now = datetime.now(scheduled_time.tzinfo) if scheduled_time.tzinfo else datetime.now()
+                delay_seconds = (now - scheduled_time).total_seconds()
+                
+                reason = f"System was unavailable. Scheduled: {scheduled_time.strftime('%Y-%m-%d %H:%M:%S')}, Delay: {int(delay_seconds)}s"
+                
+                logger.warning(f"MISSED: Task '{task_name}' missed execution. {reason}")
+                
+                # Log to execution logger with new MISSED event type
+                self.execution_logger.log_event(
+                    task_id, 
+                    task_name, 
+                    "MISSED", 
+                    reason,
+                    scheduled_time=scheduled_time.isoformat()
+                )
+            else:
+                # System job (like prewake)
+                logger.warning(f"MISSED: System job '{event.job_id}' missed execution")
+        except Exception as e:
+            logger.error(f"Error handling job missed event: {e}")
+    
+    def _on_job_error(self, event):
+        """
+        Handle APScheduler job error event.
+        Logs when a scheduled job raised an exception.
+        """
+        try:
+            job = self.scheduler.get_job(event.job_id)
+            if job and job.args and len(job.args) > 0:
+                task = job.args[0]
+                task_id = task.get('id', 0)
+                task_name = task.get('name', 'Unknown')
+                
+                error_msg = str(event.exception) if event.exception else "Unknown error"
+                logger.error(f"JOB ERROR: Task '{task_name}' failed with: {error_msg}")
+                
+                # Log to execution logger
+                self.execution_logger.log_event(task_id, task_name, "FAILED", f"Scheduler error: {error_msg}")
+        except Exception as e:
+            logger.error(f"Error handling job error event: {e}")
+    
     def add_job(self, task: Dict) -> bool:
         """
         Add a scheduled job from task data.
@@ -195,8 +353,15 @@ class TaskScheduler(QObject):
 
     def _check_and_execute(self, task: Dict):
         """
-        Check conditions (Execution Mode, Idle) before executing.
+        Check conditions (Execution Mode, System Usage) before executing.
+        Uses smart detection for auto mode: CPU, RAM, GPU, idle time, running games.
         """
+        task_id = task.get('id', 0)
+        task_name = task.get('name', 'Unknown')
+        
+        # Reload settings to get fresh execution_mode (may have been changed via UI)
+        self.settings_manager.load_settings()
+        
         # Get Execution Mode: 'auto', 'ask', 'run'
         # Default to 'ask' for safety if not set
         mode = self.settings_manager.get('execution_mode', 'ask')
@@ -206,50 +371,67 @@ class TaskScheduler(QObject):
             if self.settings_manager.get('automode', False):
                 mode = 'auto'
         
-        idle_time = self._get_idle_time()
-        
-        logger.debug(f"Check execute: Mode={mode}, Idle={idle_time}s")
+        logger.debug(f"Check execute: Mode={mode}, Task={task_name}")
         
         # Mode: Aggressive (run) - Always execute immediately
         if mode == 'run':
-            logger.info(f"Execution mode is 'Aggressive'. Executing task '{task['name']}' immediately")
+            logger.info(f"Execution mode is 'Aggressive'. Executing task '{task_name}' immediately")
             self._execute_task(task)
             return
         
-        # If user is idle (>= 60s), execute immediately regardless of mode
-        if idle_time >= 60:
-            logger.info(f"User is idle ({idle_time}s). Executing task '{task['name']}'")
-            self._execute_task(task)
-            return
-
-        # User is Active (idle < 60s)
+        # Mode: Automatic - Use smart busy detection
         if mode == 'auto':
-            # Automatic: Postpone
-            logger.info(f"User is active (idle {idle_time}s). Postponing task '{task['name']}'")
-            self._postpone_task(task)
-        elif mode == 'ask':
-            # Interactive: Ask User
-            logger.info(f"User is active. Asking permission for task '{task['name']}'")
-            self.ask_user_permission.emit(task)
+            is_busy, reason = self._is_system_busy()
+            
+            if is_busy:
+                # Log postponement with detailed reason
+                logger.info(f"System busy ({reason}). Postponing task '{task_name}'")
+                self.execution_logger.log_event(
+                    task_id, 
+                    task_name, 
+                    "POSTPONED", 
+                    f"System busy: {reason}"
+                )
+                self._postpone_task(task, minutes=30)  # 30-minute retry interval
+            else:
+                # Log that conditions were met
+                logger.info(f"System idle ({reason}). Executing task '{task_name}'")
+                self.execution_logger.log_event(
+                    task_id,
+                    task_name,
+                    "EXECUTED",
+                    f"Conditions met: {reason}"
+                )
+                self._execute_task(task)
+            return
+        
+        # Mode: Interactive (ask) - Check idle time first, then ask
+        idle_time = self._get_idle_time()
+        if idle_time >= 60:
+            logger.info(f"User is idle ({idle_time}s). Executing task '{task_name}'")
+            self._execute_task(task)
         else:
-            # Fallback (shouldn't happen if logic is correct, but treat as 'ask')
-            logger.warning(f"Unknown execution mode '{mode}'. Asking permission.")
+            logger.info(f"User is active. Asking permission for task '{task_name}'")
             self.ask_user_permission.emit(task)
 
-    def _postpone_task(self, task: Dict, minutes: int = 10):
-        """Postpone a task by X minutes."""
+    def _postpone_task(self, task: Dict, minutes: int = 30):
+        """
+        Postpone a task by X minutes.
+        Default is 30 minutes for auto mode. Never cancels - always retries.
+        """
+        task_name = task.get('name', 'Unknown')
         new_time = datetime.now() + timedelta(minutes=minutes)
         
-        # Schedule a one-time run
+        # Schedule a one-time run - never give up
         self.scheduler.add_job(
             func=self._check_and_execute,
             trigger=DateTrigger(run_date=new_time),
             args=[task],
-            name=f"postponed_{task['name']}"
+            name=f"retry_{task_name}_{new_time.strftime('%H%M')}"
         )
         
         self.task_postponed.emit(task['id'], new_time.strftime("%H:%M"))
-        logger.info(f"Postponed task '{task['name']}' to {new_time}")
+        logger.info(f"Task '{task_name}' rescheduled for {new_time.strftime('%H:%M')} (retry in {minutes} mins)")
 
     def handle_user_response(self, task: Dict, response: str):
         """Handle user response from UI dialog."""
@@ -303,9 +485,33 @@ class TaskScheduler(QObject):
             # Let's handle it in _handle_task_completion (new method) or just here.
             self._release_keep_awake()
 
+            self._release_keep_awake()
+
+        # Start Stuck Detection Monitor (runs in background)
+        if process and process.pid:
+            self._start_stuck_monitor(task_id, task_name, process.pid, task)
+
         # Handle Sleep After Completion
         if task.get('sleep_after', False):
-            self._handle_sleep_after_task(task_id, task_name, launch_time)
+            # Check if system woke up for this task (Smart Sleep)
+            woke_for_task = False
+            try:
+                wake_info = self.power_manager.get_last_wake_info()
+                if wake_info and wake_info.get('wake_time'):
+                    wake_time = wake_info['wake_time']
+                    # Check if wake was recent (within last 15 mins)
+                    # If PC woke recently, we assume it might be for this task (or another scheduled one)
+                    # If PC has been on for hours, woke_for_task will be False
+                    now = datetime.now(wake_time.tzinfo)
+                    if (now - wake_time).total_seconds() < 900: # 15 minutes
+                        woke_for_task = True
+                        logger.info(f"Smart Sleep: Recent wake detected at {wake_time} (Source: {wake_info.get('wake_source')})")
+                    else:
+                        logger.info(f"Smart Sleep: System was already awake (Last wake: {wake_time})")
+            except Exception as e:
+                logger.error(f"Error checking wake info: {e}")
+
+            self._handle_sleep_after_task(task_id, task_name, launch_time, woke_for_task)
         
         # Always release keep-awake after task starts
         # If sleep_after is True, we still release the "pre-wake" hold.
@@ -373,7 +579,7 @@ class TaskScheduler(QObject):
                     self.power_manager.stop_keep_awake()
                 logger.info(f"Keep-awake released. Counter: {self._keep_awake_counter}")
 
-    def _handle_sleep_after_task(self, task_id: int, task_name: str, launch_time: float = None):
+    def _handle_sleep_after_task(self, task_id: int, task_name: str, launch_time: float = None, woke_for_task: bool = False):
         """
         Wait for the task to finish and then put the system to sleep.
         Runs in a separate thread to avoid blocking.
@@ -382,6 +588,38 @@ class TaskScheduler(QObject):
         def wait_and_sleep():
             from process_tracker import get_spawned_processes, wait_for_processes, resolve_shortcut
             
+            def should_enter_sleep():
+                """Determine if we should sleep based on REAL (non-simulated) input.
+                
+                Monitors for 60 seconds to detect real keyboard/mouse input,
+                filtering out simulated input from automation programs.
+                """
+                logger.info("Smart Sleep: Monitoring for REAL input for 60 seconds...")
+                
+                # Get the input monitor
+                input_monitor = get_input_monitor()
+                
+                # Monitor for 60 seconds, checking every 5 seconds
+                monitoring_duration = 60
+                check_interval = 5
+                
+                # Reset the input monitor's last input time
+                input_monitor._last_real_input = time.time()
+                
+                for i in range(monitoring_duration // check_interval):
+                    time.sleep(check_interval)
+                    real_idle = input_monitor.get_real_idle_time()
+                    
+                    # If real input was detected since we started monitoring
+                    if real_idle < check_interval + 1:  # Small buffer for timing
+                        logger.info(f"Smart Sleep: Real human input detected (idle {real_idle:.1f}s). Skipping sleep.")
+                        return False
+                    
+                    logger.debug(f"Smart Sleep: Check {i+1}/{monitoring_duration // check_interval} - No real input (idle {real_idle:.1f}s)")
+                
+                logger.info(f"Smart Sleep: No real input detected for {monitoring_duration} seconds. Proceeding to sleep.")
+                return True
+
             # Get target process name from task program path
             target_name = None
             try:
@@ -416,12 +654,20 @@ class TaskScheduler(QObject):
                 # Wait for ALL spawned processes to finish
                 wait_for_processes(spawned_processes)
                 
+                # Clean up active_processes so Running status clears
+                if task_id in self.active_processes:
+                    del self.active_processes[task_id]
+                
                 # Emit task finished signal
                 self.task_finished.emit(task_id)
                 
                 logger.info(f"Task '{task_name}' and all spawned processes finished. Initiating sleep mode...")
                 time.sleep(2)  # Small buffer to ensure cleanup
-                self.power_manager.enter_sleep_mode()
+                
+                # Check sleep conditions
+                if should_enter_sleep():
+                    self.power_manager.enter_sleep_mode()
+
             else:
                 # Fallback to old behavior if we couldn't find processes
                 logger.warning(f"No spawned processes detected for '{task_name}', using fallback method")
@@ -432,10 +678,14 @@ class TaskScheduler(QObject):
                         del self.active_processes[task_id]
                         self.task_finished.emit(task_id)
                     logger.info(f"Task '{task_name}' finished (fallback). Initiating sleep mode...")
-                    self.power_manager.enter_sleep_mode()
+                    
+                    # Check sleep conditions
+                    if should_enter_sleep():
+                        self.power_manager.enter_sleep_mode()
         
         thread = threading.Thread(target=wait_and_sleep, daemon=True)
         thread.start()
+    
     def _update_system_wake_timer(self):
         """
         Calculate the next wake time and set the system wake timer.
@@ -444,6 +694,7 @@ class TaskScheduler(QObject):
         """
         try:
             next_wake_time = None
+            next_wake_task = None  # Track which task triggered the wake
             global_pre_wake = self.settings_manager.get('pre_wake_minutes', 5)
             
             # Iterate through all jobs to find the earliest 'wake_enabled' task
@@ -469,13 +720,25 @@ class TaskScheduler(QObject):
                         if wake_time > datetime.now(wake_time.tzinfo):
                             if next_wake_time is None or wake_time < next_wake_time:
                                 next_wake_time = wake_time
+                                next_wake_task = task
             
             # Remove existing pre-wake hold job
             if self.scheduler.get_job("system_prewake_hold"):
                 self.scheduler.remove_job("system_prewake_hold")
             
             if next_wake_time:
-                self.power_manager.set_wake_timer(next_wake_time)
+                success = self.power_manager.set_wake_timer(next_wake_time)
+                
+                # Log WAKE_SCHEDULED event
+                if next_wake_task and success:
+                    task_id = next_wake_task.get('id', 0)
+                    task_name = next_wake_task.get('name', 'Unknown')
+                    self.execution_logger.log_event(
+                        task_id, 
+                        task_name, 
+                        "WAKE_SCHEDULED", 
+                        f"System will wake at {next_wake_time.strftime('%Y-%m-%d %H:%M:%S')}"
+                    )
                 
                 # Schedule a job to start keeping awake at the wake time
                 self.scheduler.add_job(
@@ -576,3 +839,81 @@ class TaskScheduler(QObject):
             return None
             
         return min(next_times)
+
+    def _start_stuck_monitor(self, task_id: int, task_name: str, pid: int, task: Dict):
+        """
+        Start a background thread to monitor if the task gets stuck in an update/setup screen.
+        Runs for 5 minutes after launch.
+        """
+        def monitor_thread():
+            from process_tracker import get_spawned_processes
+            
+            logger.info(f"Stuck Monitor started for '{task_name}' (PID: {pid})")
+            start_time = time.time()
+            loop_count = 0
+            
+            # Initial wait for processes to spawn
+            time.sleep(2)
+            
+            # Monitor for 5 minutes (300 seconds)
+            while time.time() - start_time < 300:
+                # Check if main process is still running
+                if task_id not in self.active_processes:
+                    break
+                
+                # Get all related PIDs (Parent + Children)
+                # We reuse get_spawned_processes logic but we need to be careful not to spam logs
+                # Let's just get current children of the PID
+                pids_to_check = [pid]
+                try:
+                    parent = psutil.Process(pid)
+                    children = parent.children(recursive=True)
+                    pids_to_check.extend([p.pid for p in children])
+                except psutil.NoSuchProcess:
+                    break # Parent died
+                except Exception as e:
+                    logger.debug(f"Error getting children: {e}")
+                
+                # Check for stuck state (Title)
+                stuck_title = self.stuck_detector.is_process_stuck(pids_to_check, STUCK_DETECTION_KEYWORDS)
+                
+                # Check for stuck state (OCR) - Every 30 seconds (every 6th loop of 5s)
+                stuck_ocr = False
+                if not stuck_title and loop_count % 6 == 0:
+                    if self.stuck_detector.check_window_content(pids_to_check, STUCK_DETECTION_OCR_KEYWORDS):
+                        stuck_ocr = True
+                        logger.warning(f"STUCK DETECTED (OCR): Task '{task_name}' has error text in window")
+
+                if stuck_title or stuck_ocr:
+                    reason = f"window '{stuck_title}'" if stuck_title else "error text (OCR)"
+                    logger.warning(f"STUCK DETECTED: Task '{task_name}' is stuck on {reason}")
+                    
+                    # Kill and Restart Logic
+                    # 1. Stop the task
+                    self.stop_task(task_id)
+                    
+                    # 2. Wait a bit
+                    time.sleep(5)
+                    
+                    # 3. Restart (Retry)
+                    logger.info(f"Restarting stuck task '{task_name}'...")
+                    
+                    retry_key = f"retry_{task_id}"
+                    retries = getattr(self, retry_key, 0)
+                    
+                    if retries < 3:
+                        setattr(self, retry_key, retries + 1)
+                        self.execute_immediately(task)
+                    else:
+                        logger.error(f"Task '{task_name}' stuck repeatedly. Giving up after 3 retries.")
+                        setattr(self, retry_key, 0)
+                    
+                    return # Exit monitor thread
+                
+                time.sleep(5) # Check every 5 seconds (more frequent)
+                loop_count += 1
+            
+            logger.debug(f"Stuck Monitor finished for '{task_name}'")
+
+        thread = threading.Thread(target=monitor_thread, daemon=True)
+        thread.start()

@@ -8,9 +8,9 @@ import sys
 import os
 
 from datetime import datetime
-from PyQt5.QtWidgets import QApplication, QTableWidgetItem, QHeaderView, QSystemTrayIcon, QMenu, QWidget, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, QAction
-from PyQt5.QtCore import Qt, QTimer, QEvent
-from PyQt5.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QTableWidgetItem, QHeaderView, QSystemTrayIcon, QMenu, QWidget, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, QAbstractItemView
+from PyQt6.QtCore import Qt, QTimer, QEvent
+from PyQt6.QtGui import QIcon, QAction
 
 # Ensure QApplication exists before importing qfluentwidgets
 # This prevents "Must construct a QApplication before a QWidget" error
@@ -30,7 +30,8 @@ from qfluentwidgets import (
     MessageBox,
     Action,
     TransparentToolButton,
-    NavigationItemPosition
+    NavigationItemPosition,
+    qconfig
 )
 
 from task_manager import TaskManager, SettingsManager
@@ -40,6 +41,7 @@ from settings_interface import SettingsInterface
 from about_interface import AboutInterface
 from update_manager import UpdateManager
 from language_manager import get_text, get_language_manager
+from widgets.status_badge import StatusBadge
 from logger import get_logger
 from config import (
     APP_NAME,
@@ -62,6 +64,22 @@ class AutolauncherApp(FluentWindow):
     def __init__(self):
         """Initialize the Autolauncher application."""
         super().__init__()
+        
+        # CRITICAL FIX: Prevent white flash during init and theme changes
+        # Set explicit background color BEFORE any other widget creation
+        from PyQt6.QtGui import QPalette, QColor
+        from PyQt6.QtCore import Qt as QtCore
+        
+        # Disable auto-fill to prevent white background flashing
+        self.setAttribute(QtCore.WidgetAttribute.WA_StyledBackground, True)
+        self.setAutoFillBackground(False)
+        
+        # Set a dark palette immediately to prevent white flash
+        # (will be overridden by proper theme later)
+        palette = self.palette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(32, 32, 32))
+        palette.setColor(QPalette.ColorRole.Base, QColor(32, 32, 32))
+        self.setPalette(palette)
         
         # Initialize managers
         self.task_manager = TaskManager()
@@ -100,10 +118,11 @@ class AutolauncherApp(FluentWindow):
         # Apply saved theme
         self._apply_saved_theme()
         
-        # Setup theme enforcement timer (fix for "insane white" bug)
-        self.theme_timer = QTimer(self)
-        self.theme_timer.timeout.connect(self._enforce_theme)
-        self.theme_timer.start(3000) # Check every 3 seconds
+        # Simple timer-based theme enforcer
+        # Checks every 3 seconds and reapplies theme if visible
+        self._theme_enforcer = QTimer(self)
+        self._theme_enforcer.timeout.connect(self._enforce_theme)
+        self._theme_enforcer.start(3000)  # Check every 3 seconds
         
         logger.info("Autolauncher application initialized")
         
@@ -112,8 +131,7 @@ class AutolauncherApp(FluentWindow):
 
     
     def _enforce_theme(self):
-        """Periodically enforce the selected theme to prevent resets."""
-        # Only re-apply if we are visible to avoid unnecessary work
+        """Periodically enforce the selected theme to prevent white UI bug."""
         if self.isVisible():
             self._apply_saved_theme()
     
@@ -204,7 +222,7 @@ class AutolauncherApp(FluentWindow):
                         info_bar = InfoBar.info(
                             title=f"Update Available: v{version}",
                             content=f"Will install after tasks complete. Click to view details.",
-                            orient=Qt.Horizontal,
+                            orient=Qt.Orientation.Horizontal,
                             isClosable=True,
                             position=InfoBarPosition.TOP,
                             duration=-1,  # Persistent
@@ -220,7 +238,7 @@ class AutolauncherApp(FluentWindow):
                     InfoBar.success(
                         title="Smart Update",
                         content="Installing update automatically (no conflicting tasks)...",
-                        orient=Qt.Horizontal,
+                        orient=Qt.Orientation.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=3000,
@@ -234,7 +252,7 @@ class AutolauncherApp(FluentWindow):
                 InfoBar.success(
                     title="Auto-Update",
                     content=f"Installing v{version} automatically...",
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=3000,
@@ -248,7 +266,7 @@ class AutolauncherApp(FluentWindow):
             InfoBar.info(
                 title=f"Update Available: v{version}",
                 content="Opening release page in browser...",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=5000,
@@ -265,7 +283,7 @@ class AutolauncherApp(FluentWindow):
             info_bar = InfoBar.info(
                 title=f"Update Available: v{version}",
                 content="Visit the About page to learn more",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=-1,  # Persistent
@@ -281,7 +299,7 @@ class AutolauncherApp(FluentWindow):
         info_bar = InfoBar.success(
             title=f"Update Available: v{version}",
             content="A new version is ready. Click 'View Details' to update.",
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=-1,  # Persistent until clicked
@@ -312,7 +330,7 @@ class AutolauncherApp(FluentWindow):
             InfoBar.warning(
                 title="Update Downloaded",
                 content="Will install when tasks complete. Close this to cancel.",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=-1,  # Persist until closed
@@ -340,7 +358,7 @@ class AutolauncherApp(FluentWindow):
         InfoBar.success(
             title="Installing Update",
             content=f"Restarting in 5 seconds to install v{version}...",
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=False,
             position=InfoBarPosition.TOP,
             duration=5000,
@@ -369,7 +387,7 @@ class AutolauncherApp(FluentWindow):
             InfoBar.error(
                 title="Installation Failed",
                 content="Could not install update. Please try manual installation.",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=5000,
@@ -380,7 +398,7 @@ class AutolauncherApp(FluentWindow):
         """Reload all UI text with current language."""
         # Window Title
         version = self.update_manager.get_current_version()
-        self.setWindowTitle(f"{get_text('main_window.title')} (Alpha v{version})")
+        self.setWindowTitle(f"{get_text('main_window.title')} (Beta v{version})")
         
         # Toolbar Buttons
         self.addButton.setText(get_text('main_window.add_task'))
@@ -424,7 +442,7 @@ class AutolauncherApp(FluentWindow):
         # Set window properties
         # Set window properties
         version = self.update_manager.get_current_version()
-        self.setWindowTitle(f"{get_text('main_window.title')} (Alpha v{version})")
+        self.setWindowTitle(f"{get_text('main_window.title')} (Beta v{version})")
         self.resize(
             self.settings_manager.get('window_width', DEFAULT_WINDOW_WIDTH),
             self.settings_manager.get('window_height', DEFAULT_WINDOW_HEIGHT)
@@ -500,7 +518,7 @@ class AutolauncherApp(FluentWindow):
         InfoBar.success(
             title=get_text('main_window.theme_changed'),
             content=get_text('main_window.theme_switched', theme=new_theme),
-            orient=Qt.Horizontal,
+            orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=2000,
@@ -568,7 +586,7 @@ class AutolauncherApp(FluentWindow):
         self.toolbarLayout.addWidget(self.runNowButton)
         self.toolbarLayout.addWidget(self.pauseResumeButton)
         self.toolbarLayout.addWidget(self.viewLogButton)
-        self.toolbarLayout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        self.toolbarLayout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
         self.toolbarLayout.addWidget(self.themeButton)
         
         # Create task table
@@ -588,20 +606,20 @@ class AutolauncherApp(FluentWindow):
         
         # Configure table properties
         self.taskTable.verticalHeader().setVisible(False)
-        self.taskTable.setEditTriggers(TableWidget.NoEditTriggers)
-        self.taskTable.setSelectionBehavior(TableWidget.SelectRows)
-        self.taskTable.setSelectionMode(TableWidget.SingleSelection)
+        self.taskTable.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.taskTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.taskTable.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         
         # Set column resize modes
         header = self.taskTable.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Interactive)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         
         # Set default column widths
         self.taskTable.setColumnWidth(0, 150)  # Task Name
         self.taskTable.setColumnWidth(1, 300)  # Program Path
-        self.taskTable.setColumnWidth(2, 180)  # Schedule
-        self.taskTable.setColumnWidth(3, 120)  # Countdown
-        self.taskTable.setColumnWidth(4, 100)  # Status
+        self.taskTable.setColumnWidth(2, 200)  # Schedule (with emoji)
+        self.taskTable.setColumnWidth(3, 160)  # Countdown (with emoji)
+        self.taskTable.setColumnWidth(4, 120)  # Status (centered badge)
         
         header.setStretchLastSection(True)
         
@@ -646,6 +664,15 @@ class AutolauncherApp(FluentWindow):
                 schedule_time = datetime.fromisoformat(task.get('schedule_time'))
                 recurrence = task.get('recurrence', 'Once')
                 
+                # Emoji mapping for recurrence types
+                recurrence_emojis = {
+                    'Once': '📅',
+                    'Daily': '🔄',
+                    'Weekly': '📆',
+                    'Monthly': '🗓️'
+                }
+                emoji = recurrence_emojis.get(recurrence, '📅')
+                
                 if recurrence == 'Once':
                     # Get date format from settings
                     date_fmt_setting = self.settings_manager.get('date_format', 'YYYY-MM-DD')
@@ -659,11 +686,11 @@ class AutolauncherApp(FluentWindow):
                     }
                     date_fmt = fmt_map.get(date_fmt_setting, '%Y-%m-%d')
                     
-                    schedule_str = schedule_time.strftime(f'{date_fmt} %H:%M')
+                    schedule_str = f"{emoji} {schedule_time.strftime(f'{date_fmt} %H:%M')}"
                 else:
                     # For recurring tasks, show the pattern and time
                     time_str = schedule_time.strftime('%H:%M')
-                    schedule_str = f"{recurrence} at {time_str}"
+                    schedule_str = f"{emoji} {recurrence} @ {time_str}"
                     
             except:
                 schedule_str = "Invalid"
@@ -672,14 +699,63 @@ class AutolauncherApp(FluentWindow):
             # Countdown (will be updated by timer)
             self.taskTable.setItem(row, 3, QTableWidgetItem(self._calculate_countdown(task)))
             
-            # Status
-            status = get_text('main_window.status_enabled') if task.get('enabled', True) else get_text('main_window.status_disabled')
-            self.taskTable.setItem(row, 4, QTableWidgetItem(status))
+            # Status Badge - Color-coded status widget
+            task_id = task.get('id')
+            status_badge = StatusBadge()
+            
+            # Determine status
+            if not task.get('enabled', True):
+                status_badge.set_status("Disabled")
+            elif task_id in self.scheduler.active_processes:
+                status_badge.set_status("Running")
+            else:
+                # Check if job is paused in scheduler
+                if self.scheduler.is_job_paused(task_id):
+                    status_badge.set_status("Paused")
+                else:
+                    # Check if there's a postponed retry scheduled
+                    postponed_time = self._get_postponed_time(task_id)
+                    if postponed_time:
+                        status_badge.set_status("Postponed", f"@ {postponed_time}")
+                    else:
+                        # Check if one-time task is expired
+                        try:
+                            schedule_time = datetime.fromisoformat(task.get('schedule_time'))
+                            recurrence = task.get('recurrence', 'Once')
+                            if recurrence == 'Once' and schedule_time <= datetime.now():
+                                status_badge.set_status("Expired")
+                            else:
+                                status_badge.set_status("Enabled")
+                        except:
+                            status_badge.set_status("Enabled")
+            
+            # Wrap in container for centering
+            container = QWidget()
+            layout = QHBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(status_badge)
+            self.taskTable.setCellWidget(row, 4, container)
             
             # Store task ID in row
-            self.taskTable.item(row, 0).setData(Qt.UserRole, task.get('id'))
+            self.taskTable.item(row, 0).setData(Qt.ItemDataRole.UserRole, task_id)
         
         logger.debug(f"Refreshed task table with {len(tasks)} tasks")
+    
+    def _get_postponed_time(self, task_id: int) -> str:
+        """Get the next retry time for a postponed task, if any."""
+        try:
+            for job in self.scheduler.scheduler.get_jobs():
+                # Look for retry jobs for this task
+                if job.name and f"retry_" in job.name:
+                    # Check if job args contain this task
+                    if job.args and len(job.args) > 0:
+                        task = job.args[0]
+                        if task.get('id') == task_id and job.next_run_time:
+                            return job.next_run_time.strftime("%H:%M")
+        except Exception as e:
+            logger.debug(f"Error checking postponed time: {e}")
+        return None
     
     def _calculate_countdown(self, task: dict) -> str:
         """
@@ -689,19 +765,49 @@ class AutolauncherApp(FluentWindow):
             task: Task dictionary
             
         Returns:
-            Formatted countdown string
+            Formatted countdown string (with ⏳ prefix if postponed)
         """
         try:
+            task_id = task.get('id')
+            
+            # First check for postponed retry jobs
+            postponed_time = self._get_postponed_time(task_id)
+            if postponed_time:
+                # Calculate countdown to postponed time
+                from datetime import datetime as dt
+                try:
+                    # Parse the HH:MM time from postponed
+                    today = dt.now()
+                    hour, minute = map(int, postponed_time.split(':'))
+                    next_run = today.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    
+                    # If time is past, it might be tomorrow
+                    if next_run < today:
+                        from datetime import timedelta
+                        next_run += timedelta(days=1)
+                    
+                    delta = next_run - today
+                    hours, remainder = divmod(delta.seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    
+                    # Show ⏳ emoji to indicate this is a postponed/retry timer
+                    if hours > 0:
+                        return f"⏳ {hours}h {minutes}m"
+                    else:
+                        return f"⏳ {minutes}m {seconds}s"
+                except:
+                    return f"⏳ @ {postponed_time}"
+            
             # Get next run time from scheduler for accuracy (handles recurrence)
-            next_run = self.scheduler.get_next_run_time(task['id'])
+            next_run = self.scheduler.get_next_run_time(task_id)
             
             if not next_run:
                 # Fallback for 'Once' tasks that might be in the past or not scheduled
                 schedule_time = datetime.fromisoformat(task.get('schedule_time'))
                 now = datetime.now()
                 if schedule_time <= now and task.get('recurrence', 'Once') == 'Once':
-                    return get_text('main_window.status_expired')
-                return get_text('main_window.status_paused')
+                    return f"❌ {get_text('main_window.status_expired')}"
+                return f"⏸️ {get_text('main_window.status_paused')}"
             
             # Calculate delta using timezone-naive datetimes if needed
             now = datetime.now(next_run.tzinfo)
@@ -711,12 +817,13 @@ class AutolauncherApp(FluentWindow):
             hours, remainder = divmod(delta.seconds, 3600)
             minutes, seconds = divmod(remainder, 60)
             
+            # Show ⏱️ emoji for normal scheduled countdown
             if days > 0:
-                return f"{days}d {hours}h {minutes}m"
+                return f"⏱️ {days}d {hours}h {minutes}m"
             elif hours > 0:
-                return f"{hours}h {minutes}m {seconds}s"
+                return f"⏱️ {hours}h {minutes}m {seconds}s"
             else:
-                return f"{minutes}m {seconds}s"
+                return f"⏱️ {minutes}m {seconds}s"
                 
         except Exception as e:
             logger.error(f"Error calculating countdown: {e}")
@@ -727,12 +834,17 @@ class AutolauncherApp(FluentWindow):
         """Update countdown timers for all tasks."""
         
         for row in range(self.taskTable.rowCount()):
-            task_id = self.taskTable.item(row, 0).data(Qt.UserRole)
+            task_id = self.taskTable.item(row, 0).data(Qt.ItemDataRole.UserRole)
             task = self.task_manager.get_task(task_id)
             
             if task:
                 countdown = self._calculate_countdown(task)
-                self.taskTable.setItem(row, 3, QTableWidgetItem(countdown))
+                # Reuse existing item instead of creating new one (prevents style corruption)
+                existing_item = self.taskTable.item(row, 3)
+                if existing_item:
+                    existing_item.setText(countdown)
+                else:
+                    self.taskTable.setItem(row, 3, QTableWidgetItem(countdown))
     
     def _run_now(self):
         """Execute the selected task immediately."""
@@ -741,7 +853,7 @@ class AutolauncherApp(FluentWindow):
             InfoBar.warning(
                 title=get_text('main_window.no_selection'),
                 content=get_text('main_window.select_task_run'),
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=2000,
@@ -749,7 +861,7 @@ class AutolauncherApp(FluentWindow):
             )
             return
         
-        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.UserRole)
+        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
         task = self.task_manager.get_task(task_id)
         
         if task:
@@ -757,7 +869,7 @@ class AutolauncherApp(FluentWindow):
                 InfoBar.success(
                     title=get_text('main_window.task_started'),
                     content=get_text('main_window.executing_task', name=task['name']),
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=2000,
@@ -767,7 +879,7 @@ class AutolauncherApp(FluentWindow):
                 InfoBar.error(
                     title=get_text('main_window.error'),
                     content=get_text('main_window.failed_start'),
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=3000,
@@ -798,7 +910,7 @@ class AutolauncherApp(FluentWindow):
                     InfoBar.success(
                         title=get_text('main_window.task_added'),
                         content=get_text('main_window.task_scheduled', name=task_data['name']),
-                        orient=Qt.Horizontal,
+                        orient=Qt.Orientation.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=2000,
@@ -809,7 +921,7 @@ class AutolauncherApp(FluentWindow):
                     InfoBar.error(
                         title=get_text('main_window.error'),
                         content=get_text('main_window.failed_save'),
-                        orient=Qt.Horizontal,
+                        orient=Qt.Orientation.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=3000,
@@ -819,7 +931,7 @@ class AutolauncherApp(FluentWindow):
                 InfoBar.warning(
                     title=get_text('main_window.invalid_input'),
                     content=get_text('main_window.check_input'),
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=3000,
@@ -834,7 +946,7 @@ class AutolauncherApp(FluentWindow):
             InfoBar.warning(
                 title=get_text('main_window.no_selection'),
                 content=get_text('main_window.select_task_edit'),
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=2000,
@@ -842,7 +954,7 @@ class AutolauncherApp(FluentWindow):
             )
             return
         
-        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.UserRole)
+        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
         task = self.task_manager.get_task(task_id)
         
         if task:
@@ -865,7 +977,7 @@ class AutolauncherApp(FluentWindow):
                         InfoBar.success(
                             title=get_text('main_window.task_updated'),
                             content=get_text('main_window.task_updated_msg', name=updated_task['name']),
-                            orient=Qt.Horizontal,
+                            orient=Qt.Orientation.Horizontal,
                             isClosable=True,
                             position=InfoBarPosition.TOP,
                             duration=2000,
@@ -876,7 +988,7 @@ class AutolauncherApp(FluentWindow):
                     InfoBar.warning(
                         title=get_text('main_window.invalid_input'),
                         content=get_text('main_window.check_input'),
-                        orient=Qt.Horizontal,
+                        orient=Qt.Orientation.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=3000,
@@ -898,7 +1010,7 @@ class AutolauncherApp(FluentWindow):
             InfoBar.warning(
                 title="No Selection",
                 content="Please select a task to delete",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=2000,
@@ -906,7 +1018,7 @@ class AutolauncherApp(FluentWindow):
             )
             return
         
-        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.UserRole)
+        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
         task = self.task_manager.get_task(task_id)
         
         if task:
@@ -931,7 +1043,7 @@ class AutolauncherApp(FluentWindow):
                     InfoBar.success(
                         title="Task Deleted",
                         content=f"Task '{task['name']}' has been deleted",
-                        orient=Qt.Horizontal,
+                        orient=Qt.Orientation.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=2000,
@@ -997,7 +1109,7 @@ class AutolauncherApp(FluentWindow):
     def _tray_icon_activated(self, reason):
         """Handle tray icon activation."""
         
-        if reason == QSystemTrayIcon.DoubleClick:
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             if self.isVisible():
                 self.hide()
             else:
@@ -1040,7 +1152,8 @@ class AutolauncherApp(FluentWindow):
     def _handle_task_started(self, task_id: int, task_name: str):
         """Handle task started event."""
         logger.info(f"Task started: {task_name} (ID: {task_id})")
-        # Update UI or show notification if needed
+        # Refresh table to show Running status
+        self._refresh_task_table()
     
     def _handle_task_finished(self, task_id: int):
         """Handle task finished event."""
@@ -1054,12 +1167,14 @@ class AutolauncherApp(FluentWindow):
             InfoBar.info(
                 title="Task Postponed",
                 content=f"Task '{task['name']}' postponed to {new_time_str}",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=3000,
                 parent=self
             )
+        # Refresh table to show Postponed status
+        self._refresh_task_table()
     
     def changeEvent(self, event):
         """Handle system theme changes and enforce user preference."""
@@ -1067,8 +1182,10 @@ class AutolauncherApp(FluentWindow):
         
         # Check for theme change events or window activation
         # Adding ActivationChange to catch when window wakes up/gains focus
-        if event.type() in [QEvent.PaletteChange, QEvent.ActivationChange]:
-            self._apply_saved_theme()
+        # Guard against early calls before settings_manager is initialized
+        if event.type() in [QEvent.Type.PaletteChange, QEvent.Type.ActivationChange]:
+            if hasattr(self, 'settings_manager') and self.settings_manager:
+                self._apply_saved_theme()
     
     def _toggle_task_pause(self):
         """Toggle pause/resume for the selected task."""
@@ -1077,7 +1194,7 @@ class AutolauncherApp(FluentWindow):
             InfoBar.warning(
                 title="No Selection",
                 content="Please select a task to pause/resume",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=2000,
@@ -1085,7 +1202,7 @@ class AutolauncherApp(FluentWindow):
             )
             return
         
-        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.UserRole)
+        task_id = self.taskTable.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
         task = self.task_manager.get_task(task_id)
         
         if task:
@@ -1105,7 +1222,7 @@ class AutolauncherApp(FluentWindow):
                 InfoBar.success(
                     title=f"Task {status_msg}",
                     content=f"Task '{task['name']}' has been {status_msg.lower()}",
-                    orient=Qt.Horizontal,
+                    orient=Qt.Orientation.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
                     duration=2000,
@@ -1124,7 +1241,7 @@ class AutolauncherApp(FluentWindow):
             InfoBar.error(
                 title="Error",
                 content="Could not open execution log",
-                orient=Qt.Horizontal,
+                orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=3000,
@@ -1141,7 +1258,7 @@ class AutolauncherApp(FluentWindow):
         self.tray_icon.showMessage(
             APP_NAME,
             "Application minimized to system tray",
-            QSystemTrayIcon.Information,
+            QSystemTrayIcon.MessageIcon.Information,
             2000
         )
 
@@ -1166,7 +1283,7 @@ def main():
     
     # Run event loop
     app = QApplication.instance()
-    sys.exit(app.exec_())  # PyQt5 uses exec_()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

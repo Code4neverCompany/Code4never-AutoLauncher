@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Application Information
 APP_NAME = "c4n-AutoLauncher"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.4.0"
 APP_AUTHOR = "Code4never"
 
 # Localization
@@ -118,3 +118,64 @@ TIMER_UPDATE_INTERVAL = 1000  # Update countdown every 1 second (in milliseconds
 
 # Theme Settings
 DEFAULT_THEME = "Light"  # Options: "Light", "Dark", "Auto"
+
+# Stuck Detection Settings
+# Keywords to look for in window titles that indicate a process is waiting for update/restart
+STUCK_DETECTION_KEYWORDS = [
+    "Update Available",
+    "Check for Updates",
+    "Restart Required",
+    "Setup",
+    "Installer",
+    "Patching",
+    "Updating",
+    "New Version",
+    "Release Notes"
+]
+
+# OCR Keywords (Text inside the window)
+STUCK_DETECTION_OCR_KEYWORDS = [
+    "update available",
+    "new version available",
+    "restart the application",
+    "download and install",
+    "critical update",
+    "patch required",
+    "setup wizard",
+    "installation complete",
+    "update ready",
+    "update required",
+    "error"
+]
+
+# Default Blocklist - Programs that will postpone task execution in Auto mode
+# Users can customize this list in Settings
+DEFAULT_BLOCKLIST_PROCESSES = [
+    # Games
+    'valorant.exe', 'valorant-win64-shipping.exe',
+    'leagueclient.exe', 'league of legends.exe',
+    'csgo.exe', 'cs2.exe',
+    'fortnite.exe', 'fortniteclient-win64-shipping.exe',
+    'rocketleague.exe',
+    'gta5.exe', 'gtavlauncher.exe',
+    'minecraft.exe', 'javaw.exe',
+    'dota2.exe',
+    'overwatch.exe',
+    'apex_legends.exe', 'r5apex.exe',
+    'cod.exe', 'modernwarfare.exe',
+    'pubg.exe', 'tslgame.exe',
+    'eldenring.exe',
+    'cyberpunk2077.exe',
+    'hogwartslegacy.exe',
+    'plarium play.exe', 'plrhandler.exe',
+    'riotclientservices.exe',
+    # IDEs (coding detection)
+    'code.exe',
+    'antigravity.exe',
+    'devenv.exe',
+    'pycharm64.exe', 'pycharm.exe',
+    'idea64.exe',
+    'webstorm64.exe',
+    'sublime_text.exe',
+    'atom.exe',
+]
