@@ -1,7 +1,7 @@
 {
     "version": "1.5.8",
     "release_date": "2025-12-18",
-    "description": "Hotfix: Improved process tracking for launchers that exit after spawning the game.",
+    "description": "Hotfix v1.5.8 - Improved process tracking for launchers that exit after spawning the game.",
     "changelog": [
         {
             "version": "1.5.8",
