@@ -1,14 +1,16 @@
 {
-    "version": "1.5.8",
+    "version": "1.6.0",
     "release_date": "2025-12-18",
-    "description": "Hotfix v1.5.8 - Improved process tracking for launchers that exit after spawning the game.",
+    "description": "Feature Update v1.6.0 - Native Windows OCR for Game UI Detection (and Process Tracking improvements)",
     "changelog": [
         {
-            "version": "1.5.8",
+            "version": "1.6.0",
             "date": "2025-12-18",
             "changes": [
-                "Fixed: Task finishing prematurely when launcher spawns child process and exits",
-                "Improved: Recursive process tracking in both Tracker and Monitor modules"
+                "FEATURE: Native Windows OCR - Replaced image matching with robust text detection (Windows.Media.Ocr)",
+                "FEATURE: Recursive Process Tracking - Tasks now stay active even when launchers spawn children and exit",
+                "FIX: Solved 'Black Screen' issue strategies for DirectX/Exclusive Fullscreen games",
+                "FIX: Robust Stuck Detection - Monitors entire process tree for 'Update' or 'Error' dialogs"
             ]
         },
         {
