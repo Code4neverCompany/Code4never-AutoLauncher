@@ -1021,18 +1021,45 @@ class TaskScheduler(QObject):
                 if task_id not in self.active_processes:
                     break
                 
-                # Get all related PIDs (Parent + Children)
-                # We reuse get_spawned_processes logic but we need to be careful not to spam logs
-                # Let's just get current children of the PID
-                pids_to_check = [pid]
-                try:
-                    parent = psutil.Process(pid)
-                    children = parent.children(recursive=True)
-                    pids_to_check.extend([p.pid for p in children])
-                except psutil.NoSuchProcess:
-                    break # Parent died
-                except Exception as e:
-                    logger.debug(f"Error getting children: {e}")
+                # Maintain a set of PIDs to check, starting with the initial PID
+                # We need to dynamically update this list to handle launchers that exit
+                if 'tracked_pids' not in locals():
+                    tracked_pids = {pid}
+
+                current_living_pids = []
+                new_children_pids = set()
+
+                # Check all tracked PIDs
+                for t_pid in list(tracked_pids):
+                    try:
+                        proc = psutil.Process(t_pid)
+                        if proc.is_running():
+                            current_living_pids.append(t_pid)
+                            
+                            # Check for new children
+                            try:
+                                children = proc.children(recursive=True)
+                                for child in children:
+                                    if child.pid not in tracked_pids:
+                                        logger.info(f"StuckMonitor: Adopting child process {child.name()} (PID: {child.pid})")
+                                        new_children_pids.add(child.pid)
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                pass
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                
+                # Add new children to tracking
+                if new_children_pids:
+                    tracked_pids.update(new_children_pids)
+                    current_living_pids.extend(list(new_children_pids))
+                
+                # Update list for this iteration
+                pids_to_check = current_living_pids
+                
+                # If NO processes are left alive, then we stop
+                if not pids_to_check:
+                    logger.info("StuckMonitor: All tracked processes finished. Stopping monitor.")
+                    break
                 
                 # Check for stuck state (Title)
                 stuck_title = self.stuck_detector.is_process_stuck(pids_to_check, STUCK_DETECTION_KEYWORDS)

@@ -1,8 +1,16 @@
 {
-    "version": "1.6.0",
+    "version": "1.5.8",
     "release_date": "2025-12-18",
-    "description": "Feature Update v1.6.0 - Native Windows OCR for Game UI Detection",
+    "description": "Hotfix: Improved process tracking for launchers that exit after spawning the game.",
     "changelog": [
+        {
+            "version": "1.5.8",
+            "date": "2025-12-18",
+            "changes": [
+                "Fixed: Task finishing prematurely when launcher spawns child process and exits",
+                "Improved: Recursive process tracking in both Tracker and Monitor modules"
+            ]
+        },
         {
             "version": "1.5.5",
             "date": "2025-12-18",

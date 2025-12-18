@@ -4,6 +4,7 @@ Detects if a process is stuck in an 'Update' or 'Setup' state by inspecting wind
 """
 
 import ctypes
+from ctypes import wintypes
 import threading
 import os
 import tempfile
@@ -227,20 +228,42 @@ class StuckDetector:
             try:
                 img = ImageGrab.grab(bbox=(rect.left, rect.top, rect.right, rect.bottom))
                 img.save(temp_img)
+                
+                # Check for black screen (common in Exclusive Fullscreen games)
+                try:
+                    extrema = img.convert("L").getextrema()
+                    if extrema == (0, 0):
+                        logger.warning(f"OCR Warning: Captured screenshot for HWND {hwnd} is completely BLACK. Try running the game in Windowed/Borderless mode.")
+                        return ""
+                except:
+                    pass
+                    
             except Exception as e:
+
                 logger.debug(f"Screenshot failed for HWND {hwnd}: {e}")
                 return ""
                 
-            # Call PowerShell OCR Helper
-            ps_script = os.path.join(os.path.dirname(__file__), "assets", "scripts", "ocr_helper.ps1")
-            if not os.path.exists(ps_script):
-                 # Fallback for frozen executable
+                
+            # Use compiled C# executable if available (preferred)
+            ocr_exe = os.path.join(os.path.dirname(__file__), "ocr.exe")
+            if not os.path.exists(ocr_exe):
+                 # Fallback path logic
                  base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
-                 ps_script = os.path.join(base_dir, "assets", "scripts", "ocr_helper.ps1")
+                 ocr_exe = os.path.join(base_dir, "ocr.exe")
 
-            cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps_script, temp_img]
+            if os.path.exists(ocr_exe):
+                 cmd = [ocr_exe, temp_img]
+            else:
+                 # Fallback to PowerShell script
+                 ps_script = os.path.join(os.path.dirname(__file__), "assets", "scripts", "ocr_helper.ps1")
+                 if not os.path.exists(ps_script):
+                      base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
+                      ps_script = os.path.join(base_dir, "assets", "scripts", "ocr_helper.ps1")
+                 
+                 cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps_script, temp_img]
             
-            # Run with timeout (OCR is slow-ish)
+            # Run with timeout
+            # Note: ocr.exe is a console app, capture output
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
             
             text = result.stdout.strip()
@@ -252,6 +275,7 @@ class StuckDetector:
                 pass
                 
             return text
+
             
         except ImportError:
             logger.warning("Pillow not installed. OCR disabled.")

@@ -1,5 +1,15 @@
 # AutoLauncher Release Notes
 
+## v1.5.8 (2025-12-18) - Child Process Tracking Hotfix
+This hotfix addresses an issue where tasks would be marked as "finished" prematurely when a launcher application exits after spawning the actual game or application.
+
+### Improvements
+- **Recursive Process Tracking:** The system now automatically detects when a monitored process spawns a child process and continues tracking the child even if the parent exits.
+- **Robust Stuck Detection:** The Stuck Monitor now tracks the entire lineage of processes to ensure updates and error dialogs are detected even in complex launcher scenarios.
+
+---
+
+
 ## v1.6.0 (2025-12-18)
 **Feature Update: Native Vision (OCR)**
 

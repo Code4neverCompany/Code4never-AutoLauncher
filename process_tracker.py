@@ -183,36 +183,70 @@ def wait_for_process_completion(process: psutil.Process, check_interval: float =
 def wait_for_processes(processes: list, check_interval: float = 1.0):
     """
     Wait for all processes in a list to complete.
-    Monitors all processes and waits until ALL have exited.
-    
-    Args:
-        processes: List of psutil.Process objects to monitor
-        check_interval: How often to check if processes are still running (seconds)
+    Dynamically adopts child processes: if a monitored process spawns children,
+    they are added to the wait list. This handles launchers that exit after starting the game.
     """
     if not processes:
         logger.warning("No processes to monitor")
         return
     
-    logger.info(f"Monitoring {len(processes)} process(es)")
+    # We work with a dynamic set of PIDs to avoid duplicating objects
+    monitored_pids = {p.pid for p in processes}
+    # Keep list of objects for polling
+    active_procs = list(processes)
     
-    for proc in processes:
+    logger.info(f"Monitoring {len(active_procs)} process(es) with child adoption")
+    
+    for proc in active_procs:
         try:
             logger.info(f"  - {proc.name()} (PID: {proc.pid})")
-        except:
-            pass
-    
-    # Monitor all processes
+        except: pass
+            
     while True:
-        still_running = []
-        for proc in processes:
+        # 1. Check for new children from currently running processes
+        new_children = []
+        current_running = []
+        
+        for proc in list(active_procs): # Copy list to iterate safely
             try:
                 if proc.is_running():
-                    still_running.append(proc)
-            except psutil.NoSuchProcess:
+                    current_running.append(proc)
+                    
+                    # Look for children
+                    try:
+                        children = proc.children(recursive=True)
+                        for child in children:
+                            if child.pid not in monitored_pids:
+                                try:
+                                    child_name = child.name()
+                                    # Filter out common noise? 
+                                    # For now, adopting all children of specific user-launched tasks is strictly better
+                                    # than losing the task.
+                                    logger.info(f"🚀 Detected child process: {child_name} (PID: {child.pid}) - Adopting!")
+                                    monitored_pids.add(child.pid)
+                                    new_children.append(child)
+                                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                    pass
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                        
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                # Process died, that's fine, we just don't add it to current_running
                 pass
+
+        # Add new children to the main list
+        if new_children:
+            active_procs.extend(new_children)
+            # Re-evaluate current_running to include new children immediately? 
+            # Next loop will catch them as running.
+            for child in new_children:
+                current_running.append(child)
+
+        # 2. Update active list
+        active_procs = current_running
         
-        if not still_running:
-            logger.info("All monitored processes have finished")
+        if not active_procs:
+            logger.info("All monitored processes (and children) have finished")
             break
-        
+            
         time.sleep(check_interval)

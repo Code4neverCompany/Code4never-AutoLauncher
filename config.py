@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Application Information
 APP_NAME = "c4n-AutoLauncher"
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.5.8"
 APP_AUTHOR = "Code4never"
 
 # Localization

@@ -1,35 +1,57 @@
+# compile_ocr.ps1
+# Compiles ocr.cs into ocr.exe using .NET Framework CSC
 
-try {
-    $code = Get-Content "assets\scripts\ocr.cs" -Raw
-    
-    # Get Framework Path for System.Runtime.WindowsRuntime
-    $frameworkPath = [System.Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory()
-    $sysRuntimeWinRt = Join-Path $frameworkPath "System.Runtime.WindowsRuntime.dll"
-    
-    # Facades path
-    $facadesPath = Join-Path $frameworkPath "Facades"
-    $sysRuntime = Join-Path $facadesPath "System.Runtime.dll"
-    $sysThreadingTasks = Join-Path $facadesPath "System.Threading.Tasks.dll"
-    $sysIO = Join-Path $facadesPath "System.IO.dll"
-    $sysRuntimeInterop = Join-Path $facadesPath "System.Runtime.InteropServices.dll"
+# Path to CSC (C# Compiler) - usually in .NET Framework dir
+$csc_path = "$env:windir\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 
-    $refs = @(
-        "System.Drawing",
-        $sysRuntimeWinRt,
-        $sysRuntime,
-        $sysThreadingTasks,
-        $sysIO,
-        $sysRuntimeInterop,
-        "C:\Windows\System32\WinMetadata\Windows.Foundation.winmd",
-        "C:\Windows\System32\WinMetadata\Windows.Graphics.winmd",
-        "C:\Windows\System32\WinMetadata\Windows.Media.winmd",
-        "C:\Windows\System32\WinMetadata\Windows.Storage.winmd"
-    )
-
-    Add-Type -TypeDefinition $code -ReferencedAssemblies $refs -OutputAssembly "assets\scripts\ocr.exe" -OutputType ConsoleApplication
-    Write-Host "Compilation Successful: assets\scripts\ocr.exe"
+# Output and Source
+$out_path = "$PSScriptRoot\ocr.exe"
+$src_path = "$PSScriptRoot\assets\scripts\ocr.cs"
+if (-not (Test-Path $src_path)) {
+    # Fallback to current dir if assets not found
+    $src_path = "$PSScriptRoot\ocr.cs" 
 }
-catch {
-    Write-Error "Compilation Failed: $_"
+
+if (-not (Test-Path $src_path)) {
+    Write-Error "Source file not found: $src_path"
+    exit 1
+}
+
+# Metadata Paths
+$sys32 = "$env:windir\System32\WinMetadata"
+$net4 = "$env:windir\Microsoft.NET\Framework64\v4.0.30319"
+
+# References
+# We include all likely candidates found on standard systems.
+$refs_list = @(
+    "$sys32\Windows.Foundation.winmd",
+    "$sys32\Windows.Media.winmd",
+    "$sys32\Windows.Globalization.winmd",
+    "$sys32\Windows.Graphics.winmd",
+    "$sys32\Windows.Storage.winmd",
+    "$net4\System.Runtime.WindowsRuntime.dll",
+    "$net4\System.Runtime.dll",
+    "$net4\System.IO.dll",
+    "$net4\System.Threading.Tasks.dll"
+)
+
+# Join references with comma
+$ref_str = $refs_list -join ","
+
+# Construct command
+# /target:exe /out:... /r:... source
+$cmd = "& `"$csc_path`" /target:exe /out:`"$out_path`" /r:$ref_str `"$src_path`""
+
+Write-Host "Compiling ocr.exe..."
+Write-Host "Source: $src_path"
+Write-Host "Refs: $ref_str"
+
+Invoke-Expression $cmd
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "Success: $out_path created."
+}
+else {
+    Write-Error "Compilation Failed."
     exit 1
 }
