@@ -1,10 +1,14 @@
+"""
+Publish Release Script
+Creates installer and publishes both zip and exe to GitHub.
+"""
+
 import os
-import glob
 import subprocess
 import json
-import sys
 
 VERSION_FILE = "version_info.json"
+RELEASE_DIR = "release"
 
 def load_version():
     if os.path.exists(VERSION_FILE):
@@ -13,71 +17,106 @@ def load_version():
             return data.get("version", "0.0.0")
     return "0.0.0"
 
-def get_release_notes(version):
-    """Extract changelog entries for the given version from version_info.json."""
-    if not os.path.exists(VERSION_FILE):
-        return ""
-    with open(VERSION_FILE, 'r') as f:
-        data = json.load(f)
-    for entry in data.get("changelog", []):
-        if entry.get("version") == version:
-            changes = entry.get("changes", [])
-            notes = f"## Changes for version {version}\n"
-            for change in changes:
-                notes += f"- {change}\n"
-            return notes
-    return ""
+def get_release_package(version):
+    """Find the pre-built release package."""
+    expected_file = os.path.join(RELEASE_DIR, f"c4n-AutoLauncher_v{version}.zip")
+    if os.path.exists(expected_file):
+        return expected_file
+    
+    # Fallback: look for any zip in release folder
+    if os.path.exists(RELEASE_DIR):
+        for f in os.listdir(RELEASE_DIR):
+            if f.endswith('.zip') and version in f:
+                return os.path.join(RELEASE_DIR, f)
+    
+    return None
 
-def prepend_update_system(notes):
-    """Prepend the release notes to UPDATE_SYSTEM.md so the program can display them."""
-    update_path = "UPDATE_SYSTEM.md"
-    if not os.path.exists(update_path):
-        return
-    with open(update_path, 'r', encoding='utf-8') as f:
-        existing = f.read()
-    with open(update_path, 'w', encoding='utf-8') as f:
-        f.write(notes + "\n" + existing)
+def get_installer(version):
+    """Find the installer exe."""
+    expected_file = os.path.join(RELEASE_DIR, f"Autolauncher_Setup_v{version}.exe")
+    if os.path.exists(expected_file):
+        return expected_file
+    return None
 
-def publish_release():
-    version = load_version()
-    print(f"Publishing Release v{version}...")
+def create_installer():
+    """Run the installer creation script."""
+    print("\n📦 Creating installer...")
+    try:
+        subprocess.run(["python", "create_installer.py"], check=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to create installer: {e}")
+        return False
 
-    # Generate release notes
-    release_notes = get_release_notes(version)
-    if release_notes:
-        prepend_update_system(release_notes)
-        print("Release notes added to UPDATE_SYSTEM.md")
-    else:
-        print("No release notes found for this version.")
-
-    # Find artifacts
-    release_dir = "release"
-    files = glob.glob(f"{release_dir}/*v{version}*")
-
-    if not files:
-        print(f"No artifacts found for version {version} in {release_dir}/")
-        return
-
-    print(f"Found artifacts: {files}")
-
+def create_github_release(version, zip_file, installer_file=None):
     tag = f"v{version}"
-    title = f"v{version} Release"
-
-    # Build gh command
+    title = f"v{version}"
+    
+    print(f"\n🚀 Creating GitHub Release {tag}...")
+    
+    # Build asset list
+    assets = [zip_file]
+    if installer_file:
+        assets.append(installer_file)
+    
+    # Construct command
     cmd = [
         "gh", "release", "create", tag,
-    ] + files + [
+        *assets,
         "--title", title,
-        "--notes", release_notes,
         "--generate-notes"
     ]
-
-    print("Running gh release create...")
+    
     try:
         subprocess.run(cmd, check=True)
-        print("✅ Release published successfully!")
+        print("✅ Release created successfully!")
+        return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ Failed to publish release: {e}")
+        print(f"❌ Failed to create release: {e}")
+        return False
+
+def main():
+    print("═" * 50)
+    print("           PUBLISH RELEASE WORKFLOW")
+    print("═" * 50)
+    
+    # 1. Get Version
+    version = load_version()
+    print(f"\n📌 Version: {version}")
+    
+    # 2. Find release package
+    zip_file = get_release_package(version)
+    if not zip_file:
+        print(f"❌ No release package found for v{version}")
+        print(f"   Run build_exe.py first to create the package.")
+        return
+    
+    zip_size = os.path.getsize(zip_file) / (1024 * 1024)
+    print(f"📁 Package: {zip_file} ({zip_size:.2f} MB)")
+    
+    # 3. Check/Create installer
+    installer_file = get_installer(version)
+    if not installer_file:
+        print("⚠️  Installer not found, creating...")
+        if create_installer():
+            installer_file = get_installer(version)
+    
+    if installer_file:
+        installer_size = os.path.getsize(installer_file) / (1024 * 1024)
+        print(f"💿 Installer: {installer_file} ({installer_size:.2f} MB)")
+    else:
+        print("⚠️  No installer available (will publish zip only)")
+    
+    # 4. Confirm
+    print("\n" + "─" * 50)
+    confirm = input(f"Ready to publish v{version}? (y/n): ").lower()
+    if confirm != 'y':
+        print("Aborted.")
+        return
+
+    # 5. Publish
+    create_github_release(version, zip_file, installer_file)
 
 if __name__ == "__main__":
-    publish_release()
+    main()
+

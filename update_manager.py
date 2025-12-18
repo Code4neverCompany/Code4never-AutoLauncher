@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 VERSION_FILE = "version_info.json"
 LAST_CHECK_FILE = "last_update_check.json"
 ETAG_CACHE_FILE = "etag_cache.json"
-GITHUB_REPO = "Code4neverCompany/Code4never-AutoLauncher_AlphaVersion"
+GITHUB_REPO = "Code4neverCompany/Code4never-AutoLauncher"
 # Allow overriding URL for testing
 GITHUB_API_URL = os.environ.get("AUTOLAUNCHER_UPDATE_URL", f"https://api.github.com/repos/{GITHUB_REPO}/releases")
 
@@ -154,7 +154,9 @@ class UpdateManager:
             logger.info("Checking for updates...")
             
             # Prepare headers with ETag if available
-            headers = {}
+            headers = {
+                'User-Agent': 'AutoLauncher-Updater'  # Required by GitHub API
+            }
             etag = self.etag_cache.get('releases_etag')
             if etag:
                 headers['If-None-Match'] = etag
@@ -243,7 +245,8 @@ class UpdateManager:
         """
         try:
             logger.info("Fetching all releases from GitHub...")
-            response = requests.get(GITHUB_API_URL, timeout=10)
+            headers = {'User-Agent': 'AutoLauncher-Updater'}
+            response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
             
             if response.status_code == 200:
                 releases = response.json()
@@ -293,7 +296,8 @@ class UpdateManager:
             Same as check_for_updates() but with reduced logging verbosity
         """
         try:
-            response = requests.get(GITHUB_API_URL, timeout=10)
+            headers = {'User-Agent': 'AutoLauncher-Updater'}
+            response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
             
             if response.status_code == 200:
                 releases = response.json()

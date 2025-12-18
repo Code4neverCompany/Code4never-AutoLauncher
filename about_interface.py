@@ -173,7 +173,7 @@ class UpdateDashboard(CardWidget):
         
         # External Links
         self.githubBtn = PushButton("GitHub", self, FluentIcon.GITHUB)
-        self.githubBtn.clicked.connect(lambda: self.update_manager.open_download_page("https://github.com/Code4neverCompany/Code4never-AutoLauncher_AlphaVersion"))
+        self.githubBtn.clicked.connect(lambda: self.update_manager.open_download_page("https://github.com/Code4neverCompany/Code4never-AutoLauncher"))
         
         self.logsBtn = PushButton("Open Logs", self, FluentIcon.FOLDER)
         self.logsBtn.clicked.connect(self._open_logs_folder)
@@ -463,9 +463,7 @@ class AboutInterface(ScrollArea):
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         
-        # Set transparent background
-        self.scrollWidget.setStyleSheet("QWidget{background-color: transparent;}")
-        self.setStyleSheet("QScrollArea{background-color: transparent; border: none;}")
+        # Let qfluentwidgets handle theming - don't override with hardcoded styles
         
         self.expandLayout.setSpacing(20)
         self.expandLayout.setContentsMargins(36, 20, 36, 20)

@@ -88,7 +88,10 @@ class InputMonitor:
         if self._initialized:
             return
         
-        self._last_real_input = time.time()
+        # Initialize to epoch (0) so if no real input detected, system is considered idle
+        # This prevents false "user active" when user is actually AFK
+        self._last_real_input = 0.0
+        self._has_detected_input = False  # Track if any real input has been seen
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._keyboard_hook = None
@@ -116,6 +119,7 @@ class InputMonitor:
                 
                 if not is_injected:
                     self._last_real_input = time.time()
+                    self._has_detected_input = True
                     logger.debug(f"Real keyboard input detected (vk={kb_struct.vkCode})")
         
         # Call next hook
@@ -133,6 +137,7 @@ class InputMonitor:
                 
                 if not is_injected:
                     self._last_real_input = time.time()
+                    self._has_detected_input = True
                     logger.debug(f"Real mouse input detected (type={wParam})")
         
         # Call next hook
@@ -206,7 +211,8 @@ class InputMonitor:
             return
             
         self._running = True
-        self._last_real_input = time.time()  # Reset timestamp
+        # Do NOT reset _last_real_input here - we want to detect if user is truly idle
+        # If no real input has been detected yet, the system remains in "idle" state
         self._thread = threading.Thread(target=self._hook_thread, daemon=True)
         self._thread.start()
         logger.info("InputMonitor started")

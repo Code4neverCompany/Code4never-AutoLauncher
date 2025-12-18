@@ -1,74 +1,56 @@
+# AutoLauncher Release Notes
 
-### 🛠️ Crash Fixes & Stability Improvements
+## v1.6.0 (2025-12-18)
+**Feature Update: Native Vision (OCR)**
 
-This release addresses critical crashes reported when interacting with tasks (Add/Edit/Pause) and when closing the application to the system tray.
-
----
-
-## 📥 Installation
-
-### Option 1: Auto-Update (If You Have v1.2.0+)
-1. App will detect v1.2.3 automatically
-2. Click notification or go to About tab
-3. Click "Update" button
-4. Done! App restarts with new version
-
-### Option 2: Fresh Install
-1. Download `c4n-AutoLauncher_v1.2.3.zip` from GitHub Releases
-2. Extract ZIP file
-3. Run `Autolauncher.exe` inside the extracted folder
-4. Enjoy!
-
----
-
-## 🐛 Bug Fixes
+### New Features
+*   **Native Windows OCR**: The AutoLauncher can now "see" text inside game windows that use custom UI engines (DirectX/OpenGL), such as **Wuthering Waves** or heavily skinned launchers.
+*   **Universal Detection**: If standard detection fails, the system takes a micro-screenshot of the window and reads the pixels to find "Update" or "Maintenance" keywords.
 
 ### Critical Fixes
-- **FIXED**: Application crash when clicking "Add Task", "Edit Task", or "Pause/Resume" (`AttributeError: type object 'Qt' has no attribute 'Horizontal'`).
-- **FIXED**: Application crash when minimizing to system tray or exiting (`AttributeError: type object 'QSystemTrayIcon' has no attribute 'Information'`).
-- **FIXED**: Resolved remaining PyQt6 enum compatibility issues.
+*   **v1.5.7 Hotfix Included**: Recursive process termination ensures zombie game clients are killed during a restart.
 
----
+### Previous Releases
 
-## 📊 Performance Stats
+## v1.5.7 (2025-12-18)
+**Hotfix: Recursive Process Termination**
 
-- **Startup Time**: ~1.5 seconds
-- **Memory Usage**: ~85MB
-- **Update Check**: < 0.5 seconds (with ETag)
+### Critical Fixes
+*   **FIX: Zombie Processes** - The "Smart Restart" feature previously failed to close game clients that were launched as child processes (e.g., the actual Wuthering Waves game window spawned by the launcher).
+*   **CHANGE: Recursive Kill** - `stop_task` now forcefully terminates the entire process tree (Parent + All Children). This ensures that when a task is restarted, the stuck game window is actually closed first.
 
----
+### Previous Releases
 
-## 🎯 System Requirements
+## v1.5.6 (2025-12-18)
+**Smart Restart & Persistent Dialog Recovery**
 
-- **OS**: Windows 10 or Windows 11
-- **RAM**: 200MB minimum
-- **Disk Space**: 150MB
-- **Internet**: Optional (only for updates)
+### Changes
+*   **FEATURE: Smart Restart** - Added a robust "trace back" mechanic for un-clickable update dialogs.
+    *   If a confirmation dialog ("Notice", "Update", etc.) persists for 12 seconds despite auto-click attempts, the system now identifies it as "stuck".
+    *   Stuck tasks are forcefully stopped and restarted to clear the blockage.
+    *   This resolves issues with games like *Wuthering Waves* where custom UI rendering prevents standard button clicking.
+*   **IMPROVEMENT: Enhanced Logging** - The `StuckDetector` now logs exactly which window and button it is interacting with, aiding in debugging.
+*   **FIX: Dependency** - Explicitly included `pywinauto` in the production build to fix "module not found" errors in the detection subsystem.
+*   **FIX: Persistent Dialog Logic** - Implemented a tracking counter in the scheduler to prevent infinite click loops on unresponsive windows.
 
----
+### Previous Releases
 
-## 📞 Support
+## v1.5.5 (2025-12-18)
+**Optimized Detection Speed & Depth**
 
-- 🐛 **Report Bugs**: [GitHub Issues](https://github.com/Code4neverCompany/Code4never-AutoLauncher_AlphaVersion/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/Code4neverCompany/Code4never-AutoLauncher_AlphaVersion/discussions)
-- 📖 **Documentation**: See README.md
+### Changes
+*   **PERFORMANCE: Multi-Pass Window Search** - Implemented a tiered search strategy:
+    1.  **Fast Path (Win32 API)**: Scans all window titles instantly to filter candidates.
+    2.  **Deep Path (UIA)**: Only inspects candidate windows with UI Automation, preventing system lag.
+*   **PERFORMANCE: Broad Search Limit** - Increased global window search limit to 30 windows for thoroughness.
+*   **FEATURE: Faster Reactions** - Confirmation dialog check frequency increased (10s -> 4s).
+*   **FIX: Comtypes Caching** - Resolved `ImportError` issues by directing `comtypes` to a writable cache directory.
 
----
+## v1.5.4 (2025-12-18)
+**Broad Detection & Fixes**
 
-## 🙏 Credits
+### Changes
+*   **FEATURE: Broad Update Detection** - StuckDetector now searches globally for independent launcher windows.
+*   **FIX: Update Manager** - Fixed 403 Forbidden errors by adding User-Agent headers to GitHub requests.
+*   **FIX: Update Manager** - Corrected repository target link.
 
-**Developed by**: 4never Company  
-**UI Framework**: PyQt6 + PyQt6-Fluent-Widgets  
-**Update System**: GitHub API + HTTP ETags  
-
----
-
-**Thank you for using c4n-AutoLauncher!** 🚀
-
-Your feedback drives continuous improvement.
-
----
-
-**Release Date**: December 04, 2025  
-**Version**: 1.2.3  
-**Build**: Beta Release 1.2.3

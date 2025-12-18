@@ -1,8 +1,86 @@
 {
-    "version": "1.4.0",
-    "release_date": "2025-12-10",
-    "description": "Release 1.4.0 - Smart Blocklist & Enhanced Sleep Detection",
+    "version": "1.6.0",
+    "release_date": "2025-12-18",
+    "description": "Feature Update v1.6.0 - Native Windows OCR for Game UI Detection",
     "changelog": [
+        {
+            "version": "1.5.5",
+            "date": "2025-12-18",
+            "changes": [
+                "PERFORMANCE: Optimized StuckDetector using Win32 fast-pass filtering to identify candidate windows before engaging deep UIA inspection",
+                "PERFORMANCE: Added safety limits (50 descendants) and HWND-based connection to prevent system lag during broad searches",
+                "FEATURE: Increased Confirmation Dialog check frequency from 10s to 4s for near-instant popup responses",
+                "FIX: Prioritized search for 'Notice' and 'Launcher' windows during global clicks"
+            ]
+        },
+        {
+            "version": "1.5.4",
+            "date": "2025-12-18",
+            "changes": [
+                "FEATURE: Broad Update Detection - StuckDetector now performs a global window search during the 5min monitor window, catching independent launcher popups",
+                "FEATURE: Faster Detection - Increased polling frequency from 5s to 2s for more responsive auto-dismissal",
+                "FEATURE: Keyword Expansion - Added support for 'Notice' and 'Patching progress' dialogs commonly found in modern games like Wuthering Waves",
+                "FIX: Comtypes Reliability - Implemented writable cache fix to resolve pywinauto/ImportError issues in bundled environments",
+                "FIX: Auto-Click Improvements - Refined button matching for better reliability with custom launcher dialog titles"
+            ]
+        },
+        {
+            "version": "1.5.3a",
+            "date": "2025-12-18",
+            "changes": [
+                "FIX: Update Manager - Corrected repository target link to Code4never-AutoLauncher",
+                "FIX: API Communication - Added required headers to resolve 'Update check failed' (403) errors",
+                "FIX: About UI - Updated hardcoded GitHub links to the official repository"
+            ]
+        },
+        {
+            "version": "1.5.3",
+            "date": "2025-12-18",
+            "changes": [
+                "FIX: Aggressive Display Wake - Now simulates multiple keys (Enter, Space) to reliably wake monitors",
+                "FIX: Scheduler Reliability - Added automatic re-sync of all jobs on system resume to prevent skipped tasks",
+                "FIX: Update Detection - Correctly bundled pywinauto submodules in production executable"
+            ]
+        },
+        {
+            "version": "1.5.2",
+            "date": "2025-12-16",
+            "changes": [
+                "FIX: Simulated Enter Key Press - Forces monitors to wake by simulating keyboard input",
+                "FIX: ES_DISPLAY_REQUIRED alone was insufficient on some systems - now combines with simulated input"
+            ]
+        },
+        {
+            "version": "1.5.0",
+            "date": "2025-12-13",
+            "changes": [
+                "FEATURE: Update Detection System - Auto-detects game update dialogs (Patching complete, Restart required) and clicks confirmation buttons",
+                "FEATURE: Task Restart After Update - Automatically re-runs task 30 seconds after update dialog dismissed",
+                "FEATURE: Update Detector UI Indicator - Blinking cyan badge in toolbar shows when monitoring is active (5 min after task launch)",
+                "FIX: Wake-Up Failure After 24+ Hours Sleep - System now reliably wakes for tasks after extended sleep periods",
+                "FIX: Wake timer now refreshes after each task execution, on power resume, every 4 hours, and after missed jobs",
+                "FIX: Missed tasks are now rescheduled to run 2 minutes later with RECOVERY_SCHEDULED log event",
+                "NEW: Fresh Beta icon with modern design"
+            ]
+        },
+        {
+            "version": "1.4.2",
+            "date": "2025-12-10",
+            "changes": [
+                "FIX: False 'User Active' Detection - Idle check now uses REAL input monitor to filter out simulated input from games/automation",
+                "FIX: Removed hardcoded 'antigravity.exe' from default blocklist - users can add it manually if needed",
+                "NOTE: Tasks will no longer be incorrectly postponed due to background games simulating mouse/keyboard input"
+            ]
+        },
+        {
+            "version": "1.4.1",
+            "date": "2025-12-10",
+            "changes": [
+                "FIX: Dark Mode White UI Bug - FINALLY RESOLVED! Root cause identified as Windows 11 Mica effect failing unexpectedly",
+                "FIX: Disabled Mica transparency effect to ensure solid, consistent background colors",
+                "NOTE: Background now uses reliable solid colors (#202020 dark, #F0F4F9 light) instead of Windows-managed transparency"
+            ]
+        },
         {
             "version": "1.4.0",
             "date": "2025-12-10",
@@ -17,7 +95,7 @@
                 "NEW: known_programs.json - Separate updatable file with 120+ games/IDEs/productivity apps",
                 "NEW: input_monitor.py - Low-level Windows hooks to detect INJECTED flag on input events",
                 "UX: File browser for manually adding executables to blocklist",
-                "UX: Categorized scan results with emojis (🎮 Games, 💻 IDEs, 📊 Productivity)"
+                "UX: Categorized scan results with emojis (\ud83c\udfae Games, \ud83d\udcbb IDEs, \ud83d\udcca Productivity)"
             ]
         },
         {
@@ -47,10 +125,10 @@
             "date": "2025-12-09",
             "changes": [
                 "FEATURE: Smart Auto Execution Mode - Intelligently postpones tasks when system is busy (CPU >50%, RAM >80%, user active, games/IDEs running)",
-                "FEATURE: Dashboard Emoji Indicators - Visual emojis for Schedule (📅 Once, 🔄 Daily, 📆 Weekly), Countdown (⏱️ Normal, ⏳ Postponed, ⏸️ Paused, ❌ Expired)",
+                "FEATURE: Dashboard Emoji Indicators - Visual emojis for Schedule (\ud83d\udcc5 Once, \ud83d\udd04 Daily, \ud83d\udcc6 Weekly), Countdown (\u23f1\ufe0f Normal, \u23f3 Postponed, \u23f8\ufe0f Paused, \u274c Expired)",
                 "FEATURE: Color-coded Status Badges - Enabled (green), Disabled (blue), Postponed (orange), Running (purple pulse), Failed (red), Expired (gray)",
                 "FEATURE: Enhanced Log Dialog - Shows blocker process icons for postponed tasks, EXECUTED events logged with reasons",
-                "FEATURE: Postpone Timer - Countdown shows remaining time until retry with ⏳ indicator",
+                "FEATURE: Postpone Timer - Countdown shows remaining time until retry with \u23f3 indicator",
                 "FIX: Running status now clears when task finishes",
                 "FIX: Settings sync - Scheduler now reloads settings before checking execution mode",
                 "UX: Status badges centered in table cells",

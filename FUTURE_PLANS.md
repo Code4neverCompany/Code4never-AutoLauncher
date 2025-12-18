@@ -60,6 +60,12 @@ Implement intelligent automatic update installation that respects user's task sc
 - Alert if programs consume excessive resources
 - Auto-kill programs that exceed thresholds
 
+### Update Detector UI Enhancement 🔍
+- Make indicator **always visible** in toolbar
+- Show **grayed out** when inactive, **blinking cyan** when active
+- Optional: Add settings toggle to enable/disable Update Detector entirely
+- Optional: Configurable monitoring duration (currently 5 minutes)
+
 ---
 
 ## Contributing

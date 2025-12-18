@@ -5,6 +5,7 @@ Displays application settings.
 © 2025 4never Company. All rights reserved.
 """
 
+import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog
 from PyQt6.QtCore import Qt, pyqtSignal
 from qfluentwidgets import (
@@ -73,9 +74,7 @@ class SettingsInterface(ScrollArea):
         self.setWidget(self.scrollWidget)
         self.setWidgetResizable(True)
         
-        # Set transparent background to fix Light mode issue
-        self.scrollWidget.setStyleSheet("QWidget{background-color: transparent;}")
-        self.setStyleSheet("QScrollArea{background-color: transparent; border: none;}")
+        # Let qfluentwidgets handle theming - don't override with hardcoded styles
         
         self.expandLayout.setSpacing(28)
         self.expandLayout.setContentsMargins(36, 10, 36, 0)
@@ -435,6 +434,38 @@ class SettingsInterface(ScrollArea):
                 duration=2000,
                 parent=self
             )
+    
+    def _on_mica_changed(self, is_checked: bool):
+        """Handle Mica effect toggle change."""
+        self.settings_manager.set('enable_mica_effect', is_checked)
+        
+        # Try to apply to main window immediately
+        main_window = self.window()
+        if main_window and hasattr(main_window, 'set_mica_enabled'):
+            main_window.set_mica_enabled(is_checked)
+            
+            InfoBar.success(
+                title="Appearance",
+                content=f"Mica effect {'enabled' if is_checked else 'disabled'}",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
+                parent=self
+            )
+        else:
+            # Main window doesn't support live toggle - suggest restart
+            InfoBar.info(
+                title="Appearance",
+                content="Restart app to apply Mica effect change",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self
+            )
+        
+        logger.info(f"Mica effect {'enabled' if is_checked else 'disabled'}")
     
     def _open_blocklist_dialog(self):
         """Open dialog to edit blocklist."""

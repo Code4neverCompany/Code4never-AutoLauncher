@@ -56,16 +56,13 @@ hiddenimports = [
     'apscheduler.triggers.cron',
     'apscheduler.triggers.date',
     'apscheduler.triggers.interval',
-    'pywinauto',
-    'pywinauto.application',
-    'pywinauto.backend',
-    'pywinauto.backends.uia',
     'comtypes',
     'comtypes.client',
     'comtypes.gen',
     'six',
     'uuid',
-]
+    'pywinauto',
+] + collect_submodules('pywinauto')
 
 a = Analysis(
     ['autolauncher.py'],

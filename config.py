@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Application Information
 APP_NAME = "c4n-AutoLauncher"
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.6.0"
 APP_AUTHOR = "Code4never"
 
 # Localization
@@ -130,7 +130,8 @@ STUCK_DETECTION_KEYWORDS = [
     "Patching",
     "Updating",
     "New Version",
-    "Release Notes"
+    "Release Notes",
+    "Notice"
 ]
 
 # OCR Keywords (Text inside the window)
@@ -141,11 +142,42 @@ STUCK_DETECTION_OCR_KEYWORDS = [
     "download and install",
     "critical update",
     "patch required",
+    "patching progress",
     "setup wizard",
     "installation complete",
     "update ready",
     "update required",
     "error"
+]
+
+# Confirmation Dialog Keywords - Dialogs that can be auto-dismissed by clicking a button
+# These dialogs block task progression and need a button click (Confirm, OK, Continue, etc.)
+CONFIRMATION_DIALOG_KEYWORDS = [
+    "patching complete",
+    "update complete",
+    "the game is restarting",
+    "restart required",
+    "installation complete",
+    "download complete",
+    "ready to play",
+    "click to continue",
+    "press any key",
+    "click ok to continue",
+    "notice",
+]
+
+# Button labels to look for when auto-dismissing confirmation dialogs
+CONFIRMATION_BUTTON_LABELS = [
+    "Confirm",
+    "OK",
+    "Continue",
+    "Play",
+    "Start",
+    "Launch",
+    "Restart",
+    "Close",
+    "Yes",
+    "Accept",
 ]
 
 # Default Blocklist - Programs that will postpone task execution in Auto mode
@@ -171,7 +203,6 @@ DEFAULT_BLOCKLIST_PROCESSES = [
     'riotclientservices.exe',
     # IDEs (coding detection)
     'code.exe',
-    'antigravity.exe',
     'devenv.exe',
     'pycharm64.exe', 'pycharm.exe',
     'idea64.exe',

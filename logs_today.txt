@@ -1,0 +1,165 @@
+﻿
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9205:2025-12-17 22:07:07 - power_manager - INFO - power_manager.py:80 - System wake timer set for 
+2025-12-18 19:55:00+01:00
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9206:2025-12-17 22:07:07 - scheduler - INFO - scheduler.py:826 - Scheduled pre-wake hold for 2025-12-18 
+19:55:00+01:00
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9209:2025-12-17 22:07:07 - power_manager - INFO - power_manager.py:80 - System wake timer set for 
+2025-12-18 19:55:00+01:00
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9210:2025-12-17 22:07:07 - scheduler - INFO - scheduler.py:826 - Scheduled pre-wake hold for 2025-12-18 
+19:55:00+01:00
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9225:2025-12-17 22:09:09 - power_manager - INFO - power_manager.py:80 - System wake timer set for 
+2025-12-18 19:55:00+01:00
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9227:2025-12-17 22:09:09 - scheduler - INFO - scheduler.py:826 - Scheduled pre-wake hold for 2025-12-18 
+19:55:00+01:00
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9270:2025-12-18 19:55:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9271:2025-12-18 19:55:45 - __main__ - INFO - autolauncher.py:1339 - System resumed from sleep - 
+refreshing wake timer
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9272:2025-12-18 19:55:46 - __main__ - INFO - autolauncher.py:1339 - System resumed from sleep - 
+refreshing wake timer
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9273:2025-12-18 19:57:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9274:2025-12-18 19:59:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9275:2025-12-18 20:01:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9276:2025-12-18 20:03:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9277:2025-12-18 20:04:26 - scheduler - INFO - scheduler.py:391 - Manual execution requested for task 
+'Wuwa'
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9278:2025-12-18 20:04:26 - task_manager - INFO - task_manager.py:32 - TaskManager initialized with 2 tasks
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9279:2025-12-18 20:04:26 - scheduler - INFO - scheduler.py:509 - Executing task 'Wuwa': 
+C:/Users/Maurice/Desktop/ok-ww Daily Task exit_after.lnk
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9280:2025-12-18 20:04:26 - __main__ - INFO - autolauncher.py:1211 - Task started: Wuwa (ID: 1)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9281:2025-12-18 20:04:26 - scheduler - INFO - scheduler.py:926 - Stuck Monitor started for 'Wuwa' (PID: 
+224744)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9282:2025-12-18 20:04:27 - power_manager - WARNING - power_manager.py:267 - Failed to get wake info: 
+Get-WinEvent : Parameter set cannot be resolved using the specified named parameters.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9290:2025-12-18 20:04:27 - task_manager - INFO - task_manager.py:32 - TaskManager initialized with 2 tasks
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9291:2025-12-18 20:04:27 - process_tracker - INFO - process_tracker.py:125 - Resolved shortcut: 
+C:/Users/Maurice/Desktop/ok-ww Daily Task exit_after.lnk -> C:\Users\Maurice\Desktop\ok-ww\ok-ww.exe
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9292:2025-12-18 20:04:27 - scheduler - INFO - scheduler.py:717 - Monitoring spawned processes for 'Wuwa' 
+(Target: ok-ww.exe)...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9293:2025-12-18 20:04:28 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9294:2025-12-18 20:04:28 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9295:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:41 - Monitoring for newly spawned 
+processes (timeout: 8s)...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9296:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:43 - Prioritizing search for: 
+ok-ww.exe
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9297:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:70 - Detected new process: 
+msedgewebview2.exe (PID: 210260)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9298:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:70 - Detected new process: 
+msedgewebview2.exe (PID: 218272)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9299:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:70 - Detected new process: 
+WmiPrvSE.exe (PID: 222280)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9300:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:70 - Detected new process: cmd.exe 
+(PID: 224744)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9301:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:70 - Detected new process: 
+msedgewebview2.exe (PID: 226620)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9302:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:70 - Detected new process: 
+msedgewebview2.exe (PID: 227668)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9303:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:70 - Detected new process: 
+msedgewebview2.exe (PID: 228480)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9304:2025-12-18 20:04:28 - process_tracker - INFO - process_tracker.py:60 - 🎯 Found TARGET process: 
+ok-ww.exe (PID: 229000)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9305:2025-12-18 20:04:29 - process_tracker - INFO - process_tracker.py:70 - Detected new process: 
+msedgewebview2.exe (PID: 230168)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9306:2025-12-18 20:04:30 - process_tracker - INFO - process_tracker.py:70 - Detected new process: 
+pythonw.exe (PID: 229164)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9307:2025-12-18 20:04:31 - process_tracker - INFO - process_tracker.py:90 - Target process found! 
+Ignoring other detected processes to prevent false positives.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9308:2025-12-18 20:04:31 - process_tracker - INFO - process_tracker.py:94 - Monitoring 1 process(es)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9309:2025-12-18 20:04:31 - scheduler - INFO - scheduler.py:727 - Waiting for 1 spawned process(es) to 
+complete before sleeping...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9310:2025-12-18 20:04:31 - process_tracker - INFO - process_tracker.py:196 - Monitoring 1 process(es)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9311:2025-12-18 20:04:31 - process_tracker - INFO - process_tracker.py:200 -   - ok-ww.exe (PID: 229000)
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9312:2025-12-18 20:04:38 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9313:2025-12-18 20:04:48 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9314:2025-12-18 20:04:58 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9315:2025-12-18 20:04:58 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9316:2025-12-18 20:05:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9317:2025-12-18 20:05:08 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9318:2025-12-18 20:05:18 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9319:2025-12-18 20:05:29 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9320:2025-12-18 20:05:29 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9321:2025-12-18 20:05:39 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9322:2025-12-18 20:05:49 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9323:2025-12-18 20:05:59 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9324:2025-12-18 20:05:59 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9325:2025-12-18 20:06:09 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9326:2025-12-18 20:06:19 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9327:2025-12-18 20:06:29 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9328:2025-12-18 20:06:29 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9329:2025-12-18 20:06:39 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9330:2025-12-18 20:06:49 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9331:2025-12-18 20:06:59 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9332:2025-12-18 20:06:59 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9333:2025-12-18 20:07:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9334:2025-12-18 20:07:09 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9335:2025-12-18 20:07:19 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9336:2025-12-18 20:07:29 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9337:2025-12-18 20:07:29 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9338:2025-12-18 20:07:39 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9339:2025-12-18 20:07:49 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9340:2025-12-18 20:07:59 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9341:2025-12-18 20:07:59 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9342:2025-12-18 20:08:09 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9343:2025-12-18 20:08:19 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9344:2025-12-18 20:08:29 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9345:2025-12-18 20:08:29 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9346:2025-12-18 20:08:40 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9347:2025-12-18 20:08:50 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9348:2025-12-18 20:09:00 - stuck_detector - ERROR - stuck_detector.py:144 - pywinauto not installed. 
+Visual detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9349:2025-12-18 20:09:00 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9350:2025-12-18 20:09:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9351:2025-12-18 20:09:10 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9352:2025-12-18 20:09:20 - stuck_detector - ERROR - stuck_detector.py:196 - pywinauto not installed. 
+Confirmation detection disabled.
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9353:2025-12-18 20:11:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9354:2025-12-18 20:13:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9355:2025-12-18 20:15:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9356:2025-12-18 20:17:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9357:2025-12-18 20:19:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9358:2025-12-18 20:21:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9359:2025-12-18 20:23:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9360:2025-12-18 20:25:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9361:2025-12-18 20:27:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9362:2025-12-18 20:29:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9363:2025-12-18 20:31:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+C:\Users\Maurice\AppData\Local\Programs\Autolauncher\logs\autolauncher.log:9364:2025-12-18 20:33:04 - __main__ - INFO - autolauncher.py:182 - Performing periodic update check...
+
+

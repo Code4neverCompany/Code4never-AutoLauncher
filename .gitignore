@@ -61,4 +61,8 @@ release/
 *.tmp
 *.bak
 etag_cache.json
-last_update_check.json
+
+# Diagnostic
+detection.log
+autolauncher_ocr_*.png
+verify_detection.py

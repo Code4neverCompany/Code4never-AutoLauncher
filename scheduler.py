@@ -14,13 +14,14 @@ from pathlib import Path
 import threading
 from power_manager import PowerManager
 from stuck_detector import StuckDetector
-from config import STUCK_DETECTION_KEYWORDS, STUCK_DETECTION_OCR_KEYWORDS
+from config import STUCK_DETECTION_KEYWORDS, STUCK_DETECTION_OCR_KEYWORDS, CONFIRMATION_DIALOG_KEYWORDS, CONFIRMATION_BUTTON_LABELS
 from input_monitor import get_input_monitor, start_input_monitor
 
 from PyQt6.QtCore import QObject, pyqtSignal
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
 
 from logger import get_logger
@@ -47,6 +48,8 @@ class TaskScheduler(QObject):
     task_finished = pyqtSignal(int)      # task_id
     ask_user_permission = pyqtSignal(dict) # task_data
     task_postponed = pyqtSignal(int, str) # task_id, new_time_str
+    update_detector_started = pyqtSignal(int, str)  # task_id, task_name
+    update_detector_stopped = pyqtSignal(int)       # task_id
     
     def __init__(self):
         """
@@ -84,6 +87,16 @@ class TaskScheduler(QObject):
         # Add event listeners for job execution monitoring
         self.scheduler.add_listener(self._on_job_missed, EVENT_JOB_MISSED)
         self.scheduler.add_listener(self._on_job_error, EVENT_JOB_ERROR)
+        
+        # Add periodic wake timer refresh to keep timers fresh during extended sleep
+        # This ensures the wake timer is refreshed every 4 hours, preventing stale timers
+        self.scheduler.add_job(
+            func=self._periodic_wake_timer_refresh,
+            trigger=IntervalTrigger(hours=4),
+            id='periodic_wake_timer_refresh',
+            name='Periodic Wake Timer Refresh',
+            replace_existing=True
+        )
         
         logger.info("TaskScheduler initialized and started")
     
@@ -153,10 +166,12 @@ class TaskScheduler(QObject):
         except Exception as e:
             logger.debug(f"GPU check failed: {e}")
         
-        # 4. Check keyboard/mouse idle time
-        idle_time = self._get_idle_time()
-        if idle_time < IDLE_THRESHOLD:
-            reasons.append(f"User active (idle {idle_time:.0f}s)")
+        # NOTE: We do NOT check idle time for POSTPONE decisions.
+        # POSTPONE only triggers on:
+        #   1. Blocklist programs running (e.g., games, IDEs)
+        #   2. High resource usage (CPU/GPU/RAM above threshold)
+        # User idle time is irrelevant - task runs as long as no blocklist programs
+        # and resources are available.
         
         # 5. Check for known games/apps running
         try:
@@ -185,6 +200,7 @@ class TaskScheduler(QObject):
         """
         Handle APScheduler job missed event.
         Logs when a scheduled job was missed (beyond misfire_grace_time).
+        For user tasks, reschedules the task to run in 2 minutes to attempt recovery.
         """
         try:
             job = self.scheduler.get_job(event.job_id)
@@ -198,11 +214,11 @@ class TaskScheduler(QObject):
                 now = datetime.now(scheduled_time.tzinfo) if scheduled_time.tzinfo else datetime.now()
                 delay_seconds = (now - scheduled_time).total_seconds()
                 
-                reason = f"System was unavailable. Scheduled: {scheduled_time.strftime('%Y-%m-%d %H:%M:%S')}, Delay: {int(delay_seconds)}s"
+                reason = f"Wake-up failed or system unavailable. Scheduled: {scheduled_time.strftime('%Y-%m-%d %H:%M:%S')}, Delay: {int(delay_seconds)}s"
                 
                 logger.warning(f"MISSED: Task '{task_name}' missed execution. {reason}")
                 
-                # Log to execution logger with new MISSED event type
+                # Log to execution logger with MISSED event type
                 self.execution_logger.log_event(
                     task_id, 
                     task_name, 
@@ -210,9 +226,37 @@ class TaskScheduler(QObject):
                     reason,
                     scheduled_time=scheduled_time.isoformat()
                 )
+                
+                # RECOVERY: Reschedule the missed task to run in 2 minutes
+                # This gives the user a chance to have the task executed even if wake failed
+                recovery_time = datetime.now() + timedelta(minutes=2)
+                
+                logger.info(f"RECOVERY: Rescheduling missed task '{task_name}' to run at {recovery_time.strftime('%H:%M:%S')} (in 2 minutes)")
+                
+                # Log the recovery attempt
+                self.execution_logger.log_event(
+                    task_id,
+                    task_name,
+                    "RECOVERY_SCHEDULED",
+                    f"Missed task rescheduled to {recovery_time.strftime('%Y-%m-%d %H:%M:%S')} after wake-up failure"
+                )
+                
+                # Schedule recovery job
+                self.scheduler.add_job(
+                    func=self._check_and_execute,
+                    trigger=DateTrigger(run_date=recovery_time),
+                    args=[task],
+                    name=f"recovery_{task_name}_{recovery_time.strftime('%H%M')}"
+                )
+                
+                self.task_postponed.emit(task_id, recovery_time.strftime("%H:%M"))
             else:
-                # System job (like prewake)
+                # System job (like prewake) - just log, don't reschedule
                 logger.warning(f"MISSED: System job '{event.job_id}' missed execution")
+            
+            # Refresh wake timer for next scheduled task
+            # This ensures the system can still wake for future tasks after missing one
+            self._update_system_wake_timer()
         except Exception as e:
             logger.error(f"Error handling job missed event: {e}")
     
@@ -260,6 +304,15 @@ class TaskScheduler(QObject):
             trigger = None
             
             if recurrence == 'Daily':
+                # Check if this task should have already run today but hasn't yet
+                now = datetime.now()
+                today_time = now.replace(hour=schedule_time.hour, minute=schedule_time.minute, second=schedule_time.second, microsecond=0)
+                
+                # If scheduled time for today has passed but it was within the last hour, 
+                # we might want to trigger it now if the system just woke up.
+                # However, APScheduler's CronTrigger with misfire_grace_time usually handles this.
+                # The issue is when the system wakes up AT or very close to the time.
+                
                 trigger = CronTrigger(
                     hour=schedule_time.hour,
                     minute=schedule_time.minute,
@@ -309,6 +362,26 @@ class TaskScheduler(QObject):
         except Exception as e:
             logger.error(f"Error adding job for task {task.get('name')}: {e}")
             return False
+
+    def resync_all_jobs(self):
+        """
+        Re-sync all jobs in the scheduler.
+        Used after system resume to ensure the scheduler state is consistent 
+        and all triggers are correctly calculated for the new current time.
+        """
+        try:
+            logger.info("Re-syncing all scheduled jobs...")
+            from task_manager import TaskManager
+            tm = TaskManager()
+            enabled_tasks = tm.get_enabled_tasks()
+            
+            for task in enabled_tasks:
+                self.add_job(task)
+                
+            self._update_system_wake_timer()
+            logger.info(f"Re-sync complete. {len(enabled_tasks)} tasks updated.")
+        except Exception as e:
+            logger.error(f"Error during scheduler re-sync: {e}")
     
     def remove_job(self, task_id: int) -> bool:
         """Remove a scheduled job."""
@@ -418,9 +491,16 @@ class TaskScheduler(QObject):
         """
         Postpone a task by X minutes.
         Default is 30 minutes for auto mode. Never cancels - always retries.
+        Persists the postpone time to tasks.json so it survives app restarts.
         """
+        task_id = task.get('id', 0)
         task_name = task.get('name', 'Unknown')
         new_time = datetime.now() + timedelta(minutes=minutes)
+        
+        # Persist postpone time to tasks.json (survives app restart)
+        from task_manager import TaskManager
+        tm = TaskManager()
+        tm.set_postponed_until(task_id, new_time.isoformat())
         
         # Schedule a one-time run - never give up
         self.scheduler.add_job(
@@ -430,7 +510,7 @@ class TaskScheduler(QObject):
             name=f"retry_{task_name}_{new_time.strftime('%H%M')}"
         )
         
-        self.task_postponed.emit(task['id'], new_time.strftime("%H:%M"))
+        self.task_postponed.emit(task_id, new_time.strftime("%H:%M"))
         logger.info(f"Task '{task_name}' rescheduled for {new_time.strftime('%H:%M')} (retry in {minutes} mins)")
 
     def handle_user_response(self, task: Dict, response: str):
@@ -449,6 +529,11 @@ class TaskScheduler(QObject):
         program_path = task['program_path']
         task_id = task['id']
         task_name = task['name']
+        
+        # Clear postpone state since task is now executing
+        from task_manager import TaskManager
+        tm = TaskManager()
+        tm.clear_postponed(task_id)
         
         logger.info(f"Executing task '{task_name}': {program_path}")
         
@@ -517,6 +602,12 @@ class TaskScheduler(QObject):
         # If sleep_after is True, we still release the "pre-wake" hold.
         # The sleep logic handles its own power state (forcing sleep later).
         self._release_keep_awake()
+        
+        # CRITICAL: Refresh wake timer for the NEXT scheduled task
+        # This ensures that if the system goes to sleep soon after this task completes,
+        # the wake timer for the next task is already set.
+        # Without this, there's a gap where the system could sleep before the next timer is set.
+        self._update_system_wake_timer()
 
     def _schedule_pre_wake_job(self, task: Dict):
         """Schedule a job to wake the system before the task."""
@@ -570,6 +661,15 @@ class TaskScheduler(QObject):
                 self.power_manager.start_keep_awake()
             logger.info(f"Pre-wake started. Counter: {self._keep_awake_counter}")
 
+    def _periodic_wake_timer_refresh(self):
+        """
+        Periodically refresh the system wake timer to ensure reliability.
+        This fixes the issue where wake timers become stale after 24+ hours of sleep.
+        Called automatically every 4 hours by an APScheduler interval job.
+        """
+        logger.info("Periodic wake timer refresh triggered - ensuring wake timer is fresh")
+        self._update_system_wake_timer()
+
     def _release_keep_awake(self):
         """Release the keep-awake hold."""
         with self._keep_awake_lock:
@@ -603,19 +703,23 @@ class TaskScheduler(QObject):
                 monitoring_duration = 60
                 check_interval = 5
                 
-                # Reset the input monitor's last input time
-                input_monitor._last_real_input = time.time()
+                # Record the START of monitoring - don't reset global state
+                # We'll compare idle time against this to detect new input
+                monitoring_start = time.time()
+                initial_idle = input_monitor.get_real_idle_time()
                 
                 for i in range(monitoring_duration // check_interval):
                     time.sleep(check_interval)
-                    real_idle = input_monitor.get_real_idle_time()
+                    current_idle = input_monitor.get_real_idle_time()
+                    elapsed = time.time() - monitoring_start
                     
-                    # If real input was detected since we started monitoring
-                    if real_idle < check_interval + 1:  # Small buffer for timing
-                        logger.info(f"Smart Sleep: Real human input detected (idle {real_idle:.1f}s). Skipping sleep.")
+                    # If idle time is less than elapsed time, user provided input
+                    # (idle resets to 0 when real input is detected)
+                    if current_idle < elapsed - 1:  # Small buffer for timing
+                        logger.info(f"Smart Sleep: Real human input detected (idle {current_idle:.1f}s, elapsed {elapsed:.1f}s). Skipping sleep.")
                         return False
                     
-                    logger.debug(f"Smart Sleep: Check {i+1}/{monitoring_duration // check_interval} - No real input (idle {real_idle:.1f}s)")
+                    logger.debug(f"Smart Sleep: Check {i+1}/{monitoring_duration // check_interval} - No real input (idle {current_idle:.1f}s)")
                 
                 logger.info(f"Smart Sleep: No real input detected for {monitoring_duration} seconds. Proceeding to sleep.")
                 return True
@@ -756,17 +860,72 @@ class TaskScheduler(QObject):
             logger.error(f"Error updating system wake timer: {e}")
 
     def stop_task(self, task_id: int) -> bool:
-        """Stop a running task (terminate process)."""
+        """
+        Stop a running task (recursively terminate process tree).
+        This ensures that games/updates launched by a launcher are also killed.
+        """
         if task_id in self.active_processes:
             process = self.active_processes[task_id]
+            pid = process.pid
+            logger.info(f"Attempting to stop Task ID {task_id} (PID {pid}) and its children...")
+            
             try:
+                # 1. Use psutil to find and kill children first
+                try:
+                    parent = psutil.Process(pid)
+                    children = parent.children(recursive=True)
+                    
+                    if children:
+                        logger.info(f"Found {len(children)} child processes. Terminating...")
+                        for child in children:
+                            try:
+                                child.terminate()
+                                logger.debug(f"Terminated child PID {child.pid} ({child.name()})")
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                pass
+                        
+                        # Wait briefly for children to die
+                        gone, still_alive = psutil.wait_procs(children, timeout=3)
+                        
+                        # Force kill if still alive
+                        for child in still_alive:
+                            try:
+                                child.kill()
+                                logger.warning(f"Force killed stubborn child PID {child.pid} ({child.name()})")
+                            except:
+                                pass
+                                
+                except psutil.NoSuchProcess:
+                    logger.warning(f"Parent process PID {pid} already gone during child lookup")
+                except Exception as e:
+                    logger.error(f"Error during child process termination: {e}")
+
+                # 2. Terminate the main parent process (the one we launched)
                 process.terminate()
-                del self.active_processes[task_id]
+                
+                # Wait for it to exit
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    logger.warning(f"Parent process PID {pid} did not exit gracefully. Force killing...")
+                    process.kill()
+                
+                # 3. Clean up
+                if task_id in self.active_processes:
+                    del self.active_processes[task_id]
+                    
                 self.task_finished.emit(task_id)
-                logger.info(f"Stopped task ID {task_id}")
+                logger.info(f"Successfully stopped Task ID {task_id} and cleaned up process tree.")
                 return True
+                
             except Exception as e:
-                logger.error(f"Error stopping task ID {task_id}: {e}")
+                logger.error(f"Critical error stopping task ID {task_id}: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                
+                # Force clean up dictionary even if error occurred
+                if task_id in self.active_processes:
+                    del self.active_processes[task_id]
                 return False
         return False
 
@@ -849,6 +1008,7 @@ class TaskScheduler(QObject):
             from process_tracker import get_spawned_processes
             
             logger.info(f"Stuck Monitor started for '{task_name}' (PID: {pid})")
+            self.update_detector_started.emit(task_id, task_name)
             start_time = time.time()
             loop_count = 0
             
@@ -877,12 +1037,49 @@ class TaskScheduler(QObject):
                 # Check for stuck state (Title)
                 stuck_title = self.stuck_detector.is_process_stuck(pids_to_check, STUCK_DETECTION_KEYWORDS)
                 
-                # Check for stuck state (OCR) - Every 30 seconds (every 6th loop of 5s)
+                # Broad Search Fallback (Title) - If PID-based fails, look everywhere
+                if not stuck_title:
+                    all_titles = self.stuck_detector.get_all_window_titles()
+                    for title in all_titles:
+                        title_lower = title.lower()
+                        for kw in STUCK_DETECTION_KEYWORDS:
+                            if kw.lower() in title_lower:
+                                stuck_title = title
+                                logger.info(f"BROAD MATCH: Found stuck window title '{title}' globally")
+                                break
+                        if stuck_title: break
+                
+                # Check for stuck state (OCR) - Every 20 seconds (every 10th loop of 2s)
                 stuck_ocr = False
-                if not stuck_title and loop_count % 6 == 0:
+                if not stuck_title and loop_count % 10 == 0:
+                    # Try PID-based first
                     if self.stuck_detector.check_window_content(pids_to_check, STUCK_DETECTION_OCR_KEYWORDS):
                         stuck_ocr = True
-                        logger.warning(f"STUCK DETECTED (OCR): Task '{task_name}' has error text in window")
+                        logger.warning(f"STUCK DETECTED (UIA): Task '{task_name}' has error text in its windows")
+                    
+                    # Native OCR Fallback (If UIA fails)
+                    if not stuck_ocr:
+                         # Get HWNDs for tracked PIDs
+                        win_info = self.stuck_detector.get_window_titles_and_pids()
+                        tracked_hwnds = [hwnd for title, p, hwnd in win_info if p in pids_to_check]
+                        
+                        for hwnd in tracked_hwnds:
+                            text = self.stuck_detector.check_window_content_ocr(hwnd)
+                            if text:
+                                text_lower = text.lower()
+                                for kw in STUCK_DETECTION_OCR_KEYWORDS:
+                                    if kw.lower() in text_lower:
+                                        stuck_ocr = True
+                                        logger.warning(f"STUCK DETECTED (NATIVE OCR): Found '{kw}' in window text: '{text[:50]}...'")
+                                        break
+                            if stuck_ocr: break
+                    
+                    # Fallback to Global OCR
+                    if not stuck_ocr:
+                         # Use existing UIA global check
+                         if self.stuck_detector.check_global_window_content(STUCK_DETECTION_OCR_KEYWORDS):
+                             stuck_ocr = True
+                             logger.warning(f"STUCK DETECTED (GLOBAL UIA): Found update/error text in a visible window")
 
                 if stuck_title or stuck_ocr:
                     reason = f"window '{stuck_title}'" if stuck_title else "error text (OCR)"
@@ -910,10 +1107,111 @@ class TaskScheduler(QObject):
                     
                     return # Exit monitor thread
                 
-                time.sleep(5) # Check every 5 seconds (more frequent)
+                # Check for confirmation dialogs that need a button click (e.g., "Patching complete")
+                # This runs every 4 seconds (every 2nd loop of 2s)
+                if loop_count % 2 == 0:
+                    # Try PID-based first
+                    found_dialog = self.stuck_detector.find_confirmation_dialog(pids_to_check, CONFIRMATION_DIALOG_KEYWORDS)
+                    
+                    # Fallback to Global search for dialogs
+                    if not found_dialog:
+                        found_dialog = self.stuck_detector.find_confirmation_dialog([None], CONFIRMATION_DIALOG_KEYWORDS)
+                        if found_dialog:
+                            logger.info(f"BROAD MATCH: Found confirmation dialog globally for '{task_name}'")
+
+                    if found_dialog:
+                        logger.info(f"CONFIRMATION DIALOG: Task '{task_name}' has a dialog waiting for input")
+                        
+                        # Increment persistent dialog counter
+                        dlg_persist_attr = f"dlg_persist_{task_id}"
+                        current_persist_count = getattr(self, dlg_persist_attr, 0) + 1
+                        setattr(self, dlg_persist_attr, current_persist_count)
+                        
+                        # Try to auto-click the confirmation button
+                        pids_for_click = pids_to_check + [None]
+                        success = self.stuck_detector.click_confirmation_button(pids_for_click, CONFIRMATION_BUTTON_LABELS)
+                        
+                        if success:
+                            # Reset persistence counter on success
+                            setattr(self, dlg_persist_attr, 0)
+                            
+                            logger.info(f"AUTO-DISMISSED: Successfully clicked confirmation button for '{task_name}'")
+                            
+                            # Log to execution logger
+                            self.execution_logger.log_event(
+                                task_id,
+                                task_name,
+                                "AUTO_DISMISSED",
+                                "Confirmation dialog auto-dismissed (update/patch complete)"
+                            )
+                            
+                            # Update/Restart detection
+                            logger.info(f"RESTART DETECTED: Scheduling task '{task_name}' to re-run in 30 seconds (post-update restart)")
+                            
+                            self.execution_logger.log_event(
+                                task_id,
+                                task_name,
+                                "RESTART_SCHEDULED",
+                                "Task will re-run in 30 seconds after update/restart completes"
+                            )
+                            
+                            # Schedule re-run after 30 seconds
+                            restart_time = datetime.now() + timedelta(seconds=30)
+                            self.scheduler.add_job(
+                                func=self._check_and_execute,
+                                trigger=DateTrigger(run_date=restart_time),
+                                args=[task],
+                                name=f"restart_{task_name}_{restart_time.strftime('%H%M%S')}"
+                            )
+                            
+                            # Exit monitor - the new job will have its own monitor
+                            return
+                        else:
+                            # If click failed, check if we've reached the threshold for FORCE RESTART
+                            if current_persist_count >= 3:
+                                logger.error(f"PERSISTENT DIALOG: Task '{task_name}' has stuck dialog for ~12s. Forcing restart.")
+                                setattr(self, dlg_persist_attr, 0) # Reset counter
+                                
+                                self.execution_logger.log_event(
+                                    task_id,
+                                    task_name,
+                                    "STUCK_RESTART_DLG",
+                                    "Persistent un-clickable dialog detected. Forcefully restarting task."
+                                )
+                                
+                                # Use the existing kill-and-restart logic
+                                # 1. Stop the task
+                                self.stop_task(task_id)
+                                
+                                # 2. Wait a bit
+                                time.sleep(5)
+                                
+                                # 3. Restart (Retry)
+                                logger.info(f"Forcefully restarting stuck task '{task_name}'...")
+                                
+                                retry_key = f"retry_{task_id}"
+                                retries = getattr(self, retry_key, 0)
+                                if retries < 3:
+                                    setattr(self, retry_key, retries + 1)
+                                    self.execute_immediately(task)
+                                else:
+                                    logger.error(f"Task '{task_name}' stuck repeatedly on dialog. Giving up.")
+                                    setattr(self, retry_key, 0)
+                                
+                                return # Exit monitor thread
+                            else:
+                                logger.warning(f"Click attempts failed. Dialog persistence: {current_persist_count}/3")
+                    else:
+                        # Reset counter if dialog disappears
+                        dlg_persist_attr = f"dlg_persist_{task_id}"
+                        if hasattr(self, dlg_persist_attr) and getattr(self, dlg_persist_attr, 0) > 0:
+                             setattr(self, dlg_persist_attr, 0)
+                
+                time.sleep(2) # Check every 2 seconds (was 5s)
                 loop_count += 1
             
             logger.debug(f"Stuck Monitor finished for '{task_name}'")
+            self.update_detector_stopped.emit(task_id)
 
         thread = threading.Thread(target=monitor_thread, daemon=True)
         thread.start()

@@ -123,25 +123,17 @@ class PowerManager:
 
     def start_keep_awake(self) -> bool:
         """
-        Prevent the system from entering sleep mode.
-        Uses SetThreadExecutionState with ES_SYSTEM_REQUIRED | ES_CONTINUOUS.
+        Prevent the system from entering sleep mode AND turn on displays.
+        Uses SetThreadExecutionState with ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED | ES_CONTINUOUS.
+        Also simulates an Enter key press to force monitors to wake up.
         """
         try:
-            # ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED (optional)
-            # We use ES_SYSTEM_REQUIRED to keep the system running.
-            # ES_DISPLAY_REQUIRED would keep the screen on, which might be desired for "waking up".
             ES_CONTINUOUS = 0x80000000
             ES_SYSTEM_REQUIRED = 0x00000001
             ES_DISPLAY_REQUIRED = 0x00000002
             
-            # We want to keep system awake and maybe display too? 
-            # Let's stick to system for now to avoid blinding user at night, 
-            # unless they want to see the task running. 
-            # Usually "Wake to run" implies running, so maybe display is good?
-            # Let's use SYSTEM only for now, as the task itself might turn on display if it creates a window.
-            # Actually, to be safe against "oversleeping", SYSTEM is enough.
-            
-            flags = ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+            # Use ALL flags: keep system awake AND turn on displays
+            flags = ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
             
             previous_state = _kernel32.SetThreadExecutionState(flags)
             
@@ -149,11 +141,87 @@ class PowerManager:
                 logger.error("Failed to set thread execution state to keep awake.")
                 return False
                 
-            logger.info("System keep-awake enabled.")
+            logger.info("System keep-awake enabled (with display).")
+            
+            # Force display wake by simulating Enter key press
+            # This mimics user input which reliably wakes monitors
+            self._simulate_keypress_to_wake_display()
+            
             return True
         except Exception as e:
             logger.error(f"Error starting keep awake: {e}")
             return False
+
+    def _simulate_keypress_to_wake_display(self):
+        """
+        Simulate multiple keypresses (Enter, Space) to force monitors to wake up.
+        This mimics real user input which reliably turns on displays.
+        Uses SendInput API with the KEYEVENTF_EXTENDEDKEY flag.
+        """
+        try:
+            import ctypes
+            from ctypes import wintypes
+            import time
+            
+            # Input structure for keyboard
+            INPUT_KEYBOARD = 1
+            KEYEVENTF_KEYUP = 0x0002
+            VK_RETURN = 0x0D  # Enter key
+            VK_SPACE = 0x20   # Space key
+            
+            # Define KEYBDINPUT structure
+            class KEYBDINPUT(ctypes.Structure):
+                _fields_ = [
+                    ('wVk', wintypes.WORD),
+                    ('wScan', wintypes.WORD),
+                    ('dwFlags', wintypes.DWORD),
+                    ('time', wintypes.DWORD),
+                    ('dwExtraInfo', ctypes.POINTER(ctypes.c_ulong))
+                ]
+            
+            # Define INPUT structure
+            class INPUT(ctypes.Structure):
+                class _INPUT(ctypes.Union):
+                    _fields_ = [('ki', KEYBDINPUT)]
+                _anonymous_ = ('_input',)
+                _fields_ = [
+                    ('type', wintypes.DWORD),
+                    ('_input', _INPUT)
+                ]
+            
+            user32 = ctypes.WinDLL('user32', use_last_error=True)
+            
+            def send_key(vk_code):
+                # Create key down event
+                key_down = INPUT()
+                key_down.type = INPUT_KEYBOARD
+                key_down.ki.wVk = vk_code
+                key_down.ki.dwFlags = 0
+                
+                # Create key up event  
+                key_up = INPUT()
+                key_up.type = INPUT_KEYBOARD
+                key_up.ki.wVk = vk_code
+                key_up.ki.dwFlags = KEYEVENTF_KEYUP
+                
+                # Send key down
+                user32.SendInput(1, ctypes.byref(key_down), ctypes.sizeof(INPUT))
+                time.sleep(0.05)
+                # Send key up
+                user32.SendInput(1, ctypes.byref(key_up), ctypes.sizeof(INPUT))
+
+            # Send Enter
+            send_key(VK_RETURN)
+            logger.info("Simulated Enter key press to wake display.")
+            
+            time.sleep(0.5)
+            
+            # Send Space
+            send_key(VK_SPACE)
+            logger.info("Simulated Space key press to wake display.")
+            
+        except Exception as e:
+            logger.warning(f"Failed to simulate keypress for display wake: {e}")
 
     def stop_keep_awake(self) -> bool:
         """

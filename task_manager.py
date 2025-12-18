@@ -190,6 +190,59 @@ class TaskManager:
             List of enabled task dictionaries
         """
         return [task for task in self.tasks if task.get('enabled', True)]
+    
+    def set_postponed_until(self, task_id: int, postponed_until: str) -> bool:
+        """
+        Set a task's postponed time. This persists the postpone state across app restarts.
+        
+        Args:
+            task_id: ID of the task to update
+            postponed_until: ISO format datetime string of when to retry
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            for task in self.tasks:
+                if task.get('id') == task_id:
+                    task['postponed_until'] = postponed_until
+                    success = self.save_tasks()
+                    if success:
+                        logger.info(f"Set postponed_until for task ID {task_id}: {postponed_until}")
+                    return success
+            
+            logger.warning(f"Task ID {task_id} not found for postpone update")
+            return False
+        except Exception as e:
+            logger.error(f"Error setting postponed_until: {e}")
+            return False
+    
+    def clear_postponed(self, task_id: int) -> bool:
+        """
+        Clear a task's postponed state (after successful execution).
+        
+        Args:
+            task_id: ID of the task to update
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            for task in self.tasks:
+                if task.get('id') == task_id:
+                    if 'postponed_until' in task:
+                        del task['postponed_until']
+                        success = self.save_tasks()
+                        if success:
+                            logger.info(f"Cleared postponed state for task ID {task_id}")
+                        return success
+                    return True  # Already clear
+            
+            logger.warning(f"Task ID {task_id} not found for clear_postponed")
+            return False
+        except Exception as e:
+            logger.error(f"Error clearing postponed state: {e}")
+            return False
 
 
 class SettingsManager:

@@ -6,5 +6,6 @@ Custom widgets for card-based task display.
 from .task_card import TaskCard
 from .countdown_indicator import CountdownIndicator
 from .status_badge import StatusBadge
+from .update_detector_indicator import UpdateDetectorIndicator
 
-__all__ = ['TaskCard', 'CountdownIndicator', 'StatusBadge']
+__all__ = ['TaskCard', 'CountdownIndicator', 'StatusBadge', 'UpdateDetectorIndicator']

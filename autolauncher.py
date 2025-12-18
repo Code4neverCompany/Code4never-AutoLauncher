@@ -6,6 +6,8 @@ Features Fluent Design UI, theme switching, and countdown timers.
 
 import sys
 import os
+import ctypes
+from ctypes import wintypes
 
 from datetime import datetime
 from PyQt6.QtWidgets import QApplication, QTableWidgetItem, QHeaderView, QSystemTrayIcon, QMenu, QWidget, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, QAbstractItemView
@@ -42,6 +44,7 @@ from about_interface import AboutInterface
 from update_manager import UpdateManager
 from language_manager import get_text, get_language_manager
 from widgets.status_badge import StatusBadge
+from widgets.update_detector_indicator import UpdateDetectorIndicator
 from logger import get_logger
 from config import (
     APP_NAME,
@@ -63,31 +66,38 @@ class AutolauncherApp(FluentWindow):
     
     def __init__(self):
         """Initialize the Autolauncher application."""
+        # CRITICAL: Initialize SettingsManager BEFORE super().__init__()
+        # because FluentWindow applies stylesheets during __init__
+        # and we need the correct theme set BEFORE that happens
+        self.settings_manager = SettingsManager()
+        
+        # Store expected theme for protection
+        self._expected_theme = self.settings_manager.get('theme', 'Light')
+        
+        # Apply saved theme BEFORE FluentWindow.__init__() applies stylesheets
+        if self._expected_theme == 'Dark':
+            setTheme(Theme.DARK)
+        else:
+            setTheme(Theme.LIGHT)
+        logger.info(f"Pre-init theme: {self._expected_theme}")
+        
+        # NOW call FluentWindow.__init__() with correct theme already set
         super().__init__()
         
-        # CRITICAL FIX: Prevent white flash during init and theme changes
-        # Set explicit background color BEFORE any other widget creation
-        from PyQt6.QtGui import QPalette, QColor
-        from PyQt6.QtCore import Qt as QtCore
+        # Disable Windows 11 Mica effect for stability
+        # Mica can fail and cause washed-out backgrounds - solid colors are more reliable
+        self.setMicaEffectEnabled(False)
         
-        # Disable auto-fill to prevent white background flashing
-        self.setAttribute(QtCore.WidgetAttribute.WA_StyledBackground, True)
-        self.setAutoFillBackground(False)
+        # Connect to qconfig theme change signal for protection
+        qconfig.themeChanged.connect(self._on_theme_changed)
         
-        # Set a dark palette immediately to prevent white flash
-        # (will be overridden by proper theme later)
-        palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(32, 32, 32))
-        palette.setColor(QPalette.ColorRole.Base, QColor(32, 32, 32))
-        self.setPalette(palette)
-        
-        # Initialize managers
+        # Initialize remaining managers
         self.task_manager = TaskManager()
-        self.settings_manager = SettingsManager()
         self.scheduler = TaskScheduler()
         self.update_manager = UpdateManager()
+        logger.info(f"Applied theme: {self._expected_theme}")
         
-        # CRITICAL FIX: Load saved language BEFORE creating UI
+        # Load saved language BEFORE creating UI
         saved_language = self.settings_manager.get('language', 'en')
         lang_manager = get_language_manager()
         lang_manager.set_language(saved_language)
@@ -101,13 +111,14 @@ class AutolauncherApp(FluentWindow):
         self.scheduler.task_started.connect(self._handle_task_started)
         self.scheduler.task_finished.connect(self._handle_task_finished)
         self.scheduler.task_postponed.connect(self._handle_task_postponed)
+        self.scheduler.update_detector_started.connect(self._on_update_detector_started)
+        self.scheduler.update_detector_stopped.connect(self._on_update_detector_stopped)
         
-        # Setup UI
+        # Setup UI (now with correct theme already applied)
         self._init_ui()
         self._setup_system_tray()
         
-        # CRITICAL FIX: Reload UI text after creation to ensure correct language
-        # This handles any UI elements that might have been created with default language
+        # Reload UI text after creation to ensure correct language
         QTimer.singleShot(100, self.reload_ui_text)
         
         # Setup countdown timer
@@ -115,26 +126,23 @@ class AutolauncherApp(FluentWindow):
         self.countdown_timer.timeout.connect(self._update_countdowns)
         self.countdown_timer.start(TIMER_UPDATE_INTERVAL)
         
-        # Apply saved theme
-        self._apply_saved_theme()
-        
-        # Simple timer-based theme enforcer
-        # Checks every 3 seconds and reapplies theme if visible
-        self._theme_enforcer = QTimer(self)
-        self._theme_enforcer.timeout.connect(self._enforce_theme)
-        self._theme_enforcer.start(3000)  # Check every 3 seconds
-        
         logger.info("Autolauncher application initialized")
         
         # Setup auto-update after a short delay to ensure UI is fully ready
         QTimer.singleShot(100, self._setup_auto_update)
+    
+    def _on_theme_changed(self, theme):
+        """Handle theme change signals - protect against unexpected changes."""
+        current_expected = 'Dark' if theme == Theme.DARK else 'Light'
+        saved_theme = self.settings_manager.get('theme', 'Light')
+        
+        if current_expected != saved_theme:
+            # Theme was changed by something other than our toggle - revert it
+            logger.warning(f"Unexpected theme change to {current_expected}, reverting to {saved_theme}")
+            QTimer.singleShot(50, lambda: setTheme(Theme.DARK if saved_theme == 'Dark' else Theme.LIGHT))
+        else:
+            logger.debug(f"Theme change to {current_expected} (expected)")
 
-    
-    def _enforce_theme(self):
-        """Periodically enforce the selected theme to prevent white UI bug."""
-        if self.isVisible():
-            self._apply_saved_theme()
-    
     def _setup_auto_update(self):
         """Setup automatic update checking based on user settings."""
         frequency = self.settings_manager.get('auto_update_frequency', 'startup')
@@ -587,6 +595,11 @@ class AutolauncherApp(FluentWindow):
         self.toolbarLayout.addWidget(self.pauseResumeButton)
         self.toolbarLayout.addWidget(self.viewLogButton)
         self.toolbarLayout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        
+        # Update Detector Indicator (blinking when active)
+        self.updateDetectorIndicator = UpdateDetectorIndicator(self)
+        self.toolbarLayout.addWidget(self.updateDetectorIndicator)
+        
         self.toolbarLayout.addWidget(self.themeButton)
         
         # Create task table
@@ -1052,11 +1065,55 @@ class AutolauncherApp(FluentWindow):
                     logger.info(f"Deleted task ID {task_id}")
     
     def _load_scheduled_tasks(self):
-        """Load all enabled tasks into the scheduler."""
+        """Load all enabled tasks into the scheduler.
+        
+        Also restores postponed tasks - if a task has a postponed_until time
+        that's still in the future, we schedule the retry instead of the 
+        original schedule.
+        """
         
         enabled_tasks = self.task_manager.get_enabled_tasks()
         
         for task in enabled_tasks:
+            # Check if task has a pending postponed schedule
+            postponed_until = task.get('postponed_until')
+            
+            if postponed_until:
+                try:
+                    postponed_time = datetime.fromisoformat(postponed_until)
+                    
+                    if postponed_time > datetime.now():
+                        # Still valid - schedule as retry job instead of normal schedule
+                        from apscheduler.triggers.date import DateTrigger
+                        task_name = task.get('name', 'Unknown')
+                        
+                        self.scheduler.scheduler.add_job(
+                            func=self.scheduler._check_and_execute,
+                            trigger=DateTrigger(run_date=postponed_time),
+                            args=[task],
+                            name=f"retry_{task_name}_{postponed_time.strftime('%H%M')}"
+                        )
+                        logger.info(f"Restored postponed task '{task_name}' - retry at {postponed_time.strftime('%H:%M')}")
+                        continue  # Skip normal scheduling
+                    else:
+                        # Postponed time has passed - reschedule for soon (5 mins from now)
+                        from datetime import timedelta
+                        task_name = task.get('name', 'Unknown')
+                        task_id = task.get('id', 0)
+                        new_time = datetime.now() + timedelta(minutes=5)
+                        self.task_manager.set_postponed_until(task_id, new_time.isoformat())
+                        self.scheduler.scheduler.add_job(
+                            func=self.scheduler._check_and_execute,
+                            trigger=DateTrigger(run_date=new_time),
+                            args=[task],
+                            name=f"retry_{task_name}_{new_time.strftime('%H%M')}"
+                        )
+                        logger.info(f"Rescheduled expired postpone for task '{task_name}' - retry at {new_time.strftime('%H:%M')}")
+                        continue  # Skip normal scheduling
+                except Exception as e:
+                    logger.warning(f"Error restoring postponed task: {e}")
+            
+            # Normal scheduling
             self.scheduler.add_job(task)
         
         logger.info(f"Loaded {len(enabled_tasks)} enabled tasks into scheduler")
@@ -1176,6 +1233,18 @@ class AutolauncherApp(FluentWindow):
         # Refresh table to show Postponed status
         self._refresh_task_table()
     
+    def _on_update_detector_started(self, task_id: int, task_name: str):
+        """Handle Update Detector started (show blinking indicator)."""
+        if hasattr(self, 'updateDetectorIndicator'):
+            self.updateDetectorIndicator.set_active(True, task_name)
+            logger.debug(f"Update Detector indicator activated for '{task_name}'")
+    
+    def _on_update_detector_stopped(self, task_id: int):
+        """Handle Update Detector stopped (hide indicator)."""
+        if hasattr(self, 'updateDetectorIndicator'):
+            self.updateDetectorIndicator.set_active(False)
+            logger.debug("Update Detector indicator deactivated")
+    
     def changeEvent(self, event):
         """Handle system theme changes and enforce user preference."""
         super().changeEvent(event)
@@ -1247,6 +1316,35 @@ class AutolauncherApp(FluentWindow):
                 duration=3000,
                 parent=self
             )
+
+    def nativeEvent(self, eventType, message):
+        """
+        Handle native Windows events.
+        Used to detect system power state changes (resume from sleep).
+        This ensures wake timers are refreshed after the system wakes up.
+        """
+        # Windows power broadcast constants
+        WM_POWERBROADCAST = 0x0218
+        PBT_APMRESUMEAUTOMATIC = 0x0012
+        PBT_APMRESUMESUSPEND = 0x0007
+        
+        try:
+            if eventType == b'windows_generic_MSG':
+                # Parse the Windows message structure
+                msg = wintypes.MSG.from_address(int(message))
+                
+                if msg.message == WM_POWERBROADCAST:
+                    # Check for resume events
+                    if msg.wParam in (PBT_APMRESUMEAUTOMATIC, PBT_APMRESUMESUSPEND):
+                        logger.info("System resumed from sleep - refreshing wake timer and re-syncing jobs")
+                        # Refresh wake timer to ensure next scheduled task can wake the system
+                        self.scheduler._update_system_wake_timer()
+                        # Re-sync all jobs to capture any missed triggers during the transition
+                        self.scheduler.resync_all_jobs()
+        except Exception as e:
+            logger.debug(f"Error in nativeEvent handler: {e}")
+        
+        return super().nativeEvent(eventType, message)
 
     def closeEvent(self, event):
         """Handle window close event (minimize to tray instead of closing)."""
