@@ -205,6 +205,45 @@ class SettingsInterface(ScrollArea):
         
         self.generalGroup.addSettingCard(self.languageCard)
         
+        # --- Power Settings Group ---
+        self.powerGroup = SettingCardGroup("Power", self.scrollWidget)
+        
+        # Default Sleep After Setting
+        self.sleepDefaultCard = SwitchSettingCard(
+            FluentIcon.MOON,
+            "Sleep After Task (Default)",
+            "Automatically check 'Sleep After' for new tasks",
+            configItem=None,
+            parent=self.powerGroup
+        )
+        self.sleepDefaultCard.switchButton.setChecked(self.settings_manager.get('sleep_after_default', False))
+        self.sleepDefaultCard.switchButton.checkedChanged.connect(self._on_sleep_default_changed)
+        self.powerGroup.addSettingCard(self.sleepDefaultCard)
+        
+        # Smart Sleep Setting
+        self.smartSleepCard = SwitchSettingCard(
+            FluentIcon.PEOPLE,
+            "Smart Sleep (User Activity)",
+            "Abort sleep if you are using the computer (keyboard/mouse active)",
+            configItem=None,
+            parent=self.powerGroup
+        )
+        self.smartSleepCard.switchButton.setChecked(self.settings_manager.get('smart_sleep_enabled', False))
+        self.smartSleepCard.switchButton.checkedChanged.connect(self._on_smart_sleep_changed)
+        self.powerGroup.addSettingCard(self.smartSleepCard)
+        
+        # Smart Sleep Threshold
+        self.thresholdCard = RangeSettingCard(
+            self.settings_manager.get('smart_sleep_threshold', 60) // 60, # Convert to minutes for UI
+            "Idle Threshold (minutes)",
+            "How long the computer must be idle before allowing sleep",
+            parent=self.powerGroup
+        )
+        self.thresholdCard.setRange(1, 30)
+        self.thresholdCard.setValue(self.settings_manager.get('smart_sleep_threshold', 60) // 60)
+        self.thresholdCard.valueChanged.connect(self._on_threshold_changed)
+        self.powerGroup.addSettingCard(self.thresholdCard)
+        
         # --- Updates Settings Group ---
         self.updatesGroup = SettingCardGroup("Updates", self.scrollWidget)
         
@@ -298,6 +337,7 @@ class SettingsInterface(ScrollArea):
         
         # Add groups to layout
         self.expandLayout.addWidget(self.generalGroup)
+        self.expandLayout.addWidget(self.powerGroup)
         self.expandLayout.addWidget(self.updatesGroup)
         self.expandLayout.addWidget(self.blocklistGroup)
         self.expandLayout.addStretch(1)
@@ -466,8 +506,33 @@ class SettingsInterface(ScrollArea):
             )
         
         logger.info(f"Mica effect {'enabled' if is_checked else 'disabled'}")
-    
-    def _open_blocklist_dialog(self):
+        logger.info(f"Mica effect {'enabled' if is_checked else 'disabled'}")
+
+    def _on_sleep_default_changed(self, is_checked: bool):
+        """Handle default sleep after setting change."""
+        self.settings_manager.set('sleep_after_default', is_checked)
+        logger.info(f"Default Sleep After set to: {is_checked}")
+
+    def _on_smart_sleep_changed(self, is_checked: bool):
+        """Handle smart sleep setting change."""
+        self.settings_manager.set('smart_sleep_enabled', is_checked)
+        logger.info(f"Smart Sleep enabled: {is_checked}")
+        
+        InfoBar.success(
+            title="Settings Saved",
+            content=f"Smart Sleep {'enabled' if is_checked else 'disabled'}",
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2000,
+            parent=self
+        )
+
+    def _on_threshold_changed(self, value: int):
+        """Handle smart sleep threshold change (minutes)."""
+        seconds = value * 60
+        self.settings_manager.set('smart_sleep_threshold', seconds)
+        logger.info(f"Smart Sleep threshold set to: {value} min ({seconds}s)")
         """Open dialog to edit blocklist."""
         from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QFileDialog
         from qfluentwidgets import PrimaryPushButton, PushButton, SubtitleLabel, BodyLabel

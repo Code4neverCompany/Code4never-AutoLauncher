@@ -689,19 +689,29 @@ class TaskScheduler(QObject):
             from process_tracker import get_spawned_processes, wait_for_processes, resolve_shortcut
             
             def should_enter_sleep():
-                """Determine if we should sleep based on REAL (non-simulated) input.
+                """Determine if we should sleep based on REAL (non-simulated) input."""
+                # Get Smart Sleep settings
+                try:
+                    from task_manager import SettingsManager
+                    settings = SettingsManager()
+                    is_enabled = settings.get('smart_sleep_enabled', False)
+                    threshold = settings.get('smart_sleep_threshold', 60) # Default 60 seconds
+                except ImportError:
+                    is_enabled = False
+                    threshold = 60
                 
-                Monitors for 60 seconds to detect real keyboard/mouse input,
-                filtering out simulated input from automation programs.
-                """
-                logger.info("Smart Sleep: Monitoring for REAL input for 60 seconds...")
+                if not is_enabled:
+                    logger.info("Smart Sleep disabled. Proceeding to sleep immediately.")
+                    return True
+
+                logger.info(f"Smart Sleep: Monitoring for REAL input for {threshold} seconds...")
                 
                 # Get the input monitor
                 input_monitor = get_input_monitor()
                 
-                # Monitor for 60 seconds, checking every 5 seconds
-                monitoring_duration = 60
-                check_interval = 5
+                # Monitor for threshold seconds, checking every 1 second for faster response
+                monitoring_duration = int(threshold)
+                check_interval = 1
                 
                 # Record the START of monitoring - don't reset global state
                 # We'll compare idle time against this to detect new input
@@ -715,12 +725,10 @@ class TaskScheduler(QObject):
                     
                     # If idle time is less than elapsed time, user provided input
                     # (idle resets to 0 when real input is detected)
-                    if current_idle < elapsed - 1:  # Small buffer for timing
+                    if current_idle < elapsed - 0.5:  # Small buffer for timing
                         logger.info(f"Smart Sleep: Real human input detected (idle {current_idle:.1f}s, elapsed {elapsed:.1f}s). Skipping sleep.")
                         return False
                     
-                    logger.debug(f"Smart Sleep: Check {i+1}/{monitoring_duration // check_interval} - No real input (idle {current_idle:.1f}s)")
-                
                 logger.info(f"Smart Sleep: No real input detected for {monitoring_duration} seconds. Proceeding to sleep.")
                 return True
 

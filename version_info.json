@@ -1,8 +1,17 @@
 {
-    "version": "1.6.0",
-    "release_date": "2025-12-18",
-    "description": "Feature Update v1.6.0 - Native Windows OCR for Game UI Detection (and Process Tracking improvements)",
+    "version": "1.7.0",
+    "release_date": "2026-01-08",
+    "description": "Critical Update v1.7.0 - Configurable Smart Sleep & Installer Fixes",
     "changelog": [
+        {
+            "version": "1.7.0",
+            "date": "2026-01-08",
+            "changes": [
+                "FEATURE: Configurable Smart Sleep - Enable/Disable Smart Sleep and set Idle Threshold in Settings",
+                "FIX: Legacy Installation Path - Installer now correctly targets '%Appdata%\\Autolauncher' to prevent duplicate installs",
+                "FIX: Auto-Update URL - Pointing to the correct repository for future updates"
+            ]
+        },
         {
             "version": "1.6.0",
             "date": "2025-12-18",
