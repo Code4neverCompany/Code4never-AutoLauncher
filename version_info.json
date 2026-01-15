@@ -1,8 +1,21 @@
 {
-    "version": "1.6.0",
-    "release_date": "2025-12-18",
-    "description": "Feature Update v1.6.0 - Native Windows OCR for Game UI Detection (and Process Tracking improvements)",
+    "version": "1.7.0",
+    "release_date": "2026-01-15",
+    "description": "Major Architecture Upgrade v1.7.0 - MVC Refactoring & Backend Cleanup",
     "changelog": [
+        {
+            "version": "1.7.0",
+            "date": "2026-01-15",
+            "changes": [
+                "ARCHITECTURE: Full MVC Refactoring - Split monolithic code into Controller/View for superior stability and maintenance",
+                "BACKEND: Atomic Writes - Implemented crash-safe saving for tasks and settings to prevent data corruption",
+                "BACKEND: Zombie Process Cleanup - New background collector automatically detects and cleans up finished processes",
+                "BACKEND: Spam Prevention - Intelligent notification throttling prevents alert fatigue during updates",
+                "REFACTOR: Config Externalization - Moved hardcoded blocklists to blocklist.json for easier user modification",
+                "PERFORMANCE: Input Monitor - Optimized hooks to prevent system micro-stutters during high-load gaming",
+                "FIX: Input Freeze - Resolved critical bug where keyboard/mouse would lock up on startup"
+            ]
+        },
         {
             "version": "1.6.0",
             "date": "2025-12-18",
