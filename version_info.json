@@ -1,15 +1,41 @@
 {
-    "version": "1.7.0",
-    "release_date": "2026-01-08",
-    "description": "Critical Update v1.7.0 - Configurable Smart Sleep & Installer Fixes",
+    "version": "1.8.0",
+    "release_date": "2026-01-21",
+    "description": "Addon System Upgrade v1.8.0 - Modular Architecture & UI Enhancements",
     "changelog": [
         {
-            "version": "1.7.0",
-            "date": "2026-01-08",
+            "version": "1.8.0",
+            "date": "2026-01-21",
             "changes": [
-                "FEATURE: Configurable Smart Sleep - Enable/Disable Smart Sleep and set Idle Threshold in Settings",
-                "FIX: Legacy Installation Path - Installer now correctly targets '%Appdata%\\Autolauncher' to prevent duplicate installs",
-                "FIX: Auto-Update URL - Pointing to the correct repository for future updates"
+                "ARCHITECTURE: New Addon System - Modular plugin architecture for easily extending functionality",
+                "ADDON: 'Beacon Sentinel' - Re-implemented Stuck/Update Detector as the first official Addon",
+                "UI: Dedicated Addons Page - Manage installed extensions from a new sidebar category",
+                "UI: Startup Toast - Notification confirms when Addons are successfully loaded",
+                "UI: FluentIcon Fix - Resolved crash in Settings UI by updating icon constants",
+                "REFACTOR: Cleaned up legacy detector code from Scheduler and MainController"
+            ]
+        },
+        {
+            "version": "1.7.1",
+            "date": "2026-01-16",
+            "changes": [
+                "FIX: UI Status Refresh - Task icons now correctly reflect real-time status",
+                "FIX: Startup Crash (Permission Error) - Logs and Data strictly stored in %APPDATA%",
+                "FIX: Build System - Resolved critical PyQt6 exclusion issue",
+                "FIX: Localization - Enhanced German/English translation consistency"
+            ]
+        },
+        {
+            "version": "1.7.0",
+            "date": "2026-01-15",
+            "changes": [
+                "ARCHITECTURE: Full MVC Refactoring - Split monolithic code into Controller/View for superior stability and maintenance",
+                "BACKEND: Atomic Writes - Implemented crash-safe saving for tasks and settings to prevent data corruption",
+                "BACKEND: Zombie Process Cleanup - New background collector automatically detects and cleans up finished processes",
+                "BACKEND: Spam Prevention - Intelligent notification throttling prevents alert fatigue during updates",
+                "REFACTOR: Config Externalization - Moved hardcoded blocklists to blocklist.json for easier user modification",
+                "PERFORMANCE: Input Monitor - Optimized hooks to prevent system micro-stutters during high-load gaming",
+                "FIX: Input Freeze - Resolved critical bug where keyboard/mouse would lock up on startup"
             ]
         },
         {
