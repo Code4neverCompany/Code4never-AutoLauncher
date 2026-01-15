@@ -106,6 +106,22 @@ class InputMonitor:
         self._kernel32 = ctypes.windll.kernel32
         
         self._initialized = True
+        
+        # Define 64-bit compatible argtypes
+        # HHOOK is a handle (pointer), so on 64-bit it's 64-bit.
+        # ctypes default is c_int (32-bit), causing OverflowError.
+        HHOOK = wintypes.HHOOK if hasattr(wintypes, 'HHOOK') else wintypes.HANDLE
+        LRESULT = wintypes.LRESULT if hasattr(wintypes, 'LRESULT') else ctypes.c_long
+        
+        self._user32.CallNextHookEx.argtypes = [HHOOK, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM]
+        self._user32.CallNextHookEx.restype = LRESULT
+        
+        self._user32.SetWindowsHookExW.argtypes = [ctypes.c_int, HOOKPROC, wintypes.HINSTANCE, wintypes.DWORD]
+        self._user32.SetWindowsHookExW.restype = HHOOK
+        
+        self._user32.UnhookWindowsHookEx.argtypes = [HHOOK]
+        self._user32.UnhookWindowsHookEx.restype = wintypes.BOOL
+        
         logger.info("InputMonitor initialized")
     
     def _keyboard_hook_callback(self, nCode: int, wParam: int, lParam: int) -> int:
@@ -120,7 +136,7 @@ class InputMonitor:
                 if not is_injected:
                     self._last_real_input = time.time()
                     self._has_detected_input = True
-                    logger.debug(f"Real keyboard input detected (vk={kb_struct.vkCode})")
+                    # Logging removed for performance in critical hook path
         
         # Call next hook
         return self._user32.CallNextHookEx(self._keyboard_hook, nCode, wParam, lParam)
@@ -138,7 +154,7 @@ class InputMonitor:
                 if not is_injected:
                     self._last_real_input = time.time()
                     self._has_detected_input = True
-                    logger.debug(f"Real mouse input detected (type={wParam})")
+                    # Logging removed for performance in critical hook path
         
         # Call next hook
         return self._user32.CallNextHookEx(self._mouse_hook, nCode, wParam, lParam)
@@ -166,6 +182,10 @@ class InputMonitor:
                 logger.info("Keyboard hook installed successfully")
             
             # Set mouse hook
+            # DISABLED: Mouse hooks in Python are too slow for high-polling rate mice (1000Hz+)
+            # causing system-wide input lag/freeze, especially when UI is active (GIL contention).
+            self._mouse_hook = None
+            """
             self._mouse_hook = self._user32.SetWindowsHookExW(
                 WH_MOUSE_LL,
                 self._mouse_callback,
@@ -177,6 +197,7 @@ class InputMonitor:
                 logger.error(f"Failed to set mouse hook: {ctypes.get_last_error()}")
             else:
                 logger.info("Mouse hook installed successfully")
+            """
             
             # Message loop - required for low-level hooks to work
             msg = wintypes.MSG()

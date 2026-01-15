@@ -97,6 +97,15 @@ class TaskScheduler(QObject):
             name='Periodic Wake Timer Refresh',
             replace_existing=True
         )
+
+        # Periodic process cleanup (Zombie Collection)
+        self.scheduler.add_job(
+            func=self._cleanup_finished_processes,
+            trigger=IntervalTrigger(seconds=60),
+            id='process_cleanup',
+            name='Process Cleanup',
+            replace_existing=True
+        )
         
         logger.info("TaskScheduler initialized and started")
     
@@ -129,10 +138,28 @@ class TaskScheduler(QObject):
         IDLE_THRESHOLD = 60  # seconds
         
         # Load user-configured blocklist (falls back to defaults)
-        from config import DEFAULT_BLOCKLIST_PROCESSES
-        user_blocklist = self.settings_manager.get('blocklist_processes', None)
-        if user_blocklist is None:
+        # Load user-configured blocklist (falls back to defaults)
+        from config import DEFAULT_BLOCKLIST_PROCESSES, BLOCKLIST_FILE
+        import json
+        
+        user_blocklist = []
+        
+        # 1. Try to load from JSON file (Highest Priority - External Config)
+        if BLOCKLIST_FILE.exists():
+            try:
+                with open(BLOCKLIST_FILE, 'r', encoding='utf-8') as f:
+                    user_blocklist = json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load blocklist.json: {e}")
+        
+        # 2. If nothing in JSON, try settings (Legacy)
+        if not user_blocklist:
+            user_blocklist = self.settings_manager.get('blocklist_processes', None)
+            
+        # 3. Fallback to hardcoded defaults
+        if not user_blocklist:
             user_blocklist = DEFAULT_BLOCKLIST_PROCESSES
+        
         
         # Convert to lowercase set for efficient lookup
         BLOCKLIST_PROCESSES = set(p.lower() for p in user_blocklist)
@@ -401,6 +428,10 @@ class TaskScheduler(QObject):
             logger.error(f"Error removing job for task ID {task_id}: {e}")
             return False
     
+    def clear_jobs(self):
+        """Remove all scheduled jobs."""
+        self.scheduler.remove_all_jobs()
+
     def update_job(self, task: Dict) -> bool:
         """Update a scheduled job."""
         self.remove_job(task['id'])
@@ -543,9 +574,11 @@ class TaskScheduler(QObject):
         launch_time = time.time()
         
         try:
+            # Use shell=False for reliable PID tracking
+            # If arguments are needed in the future, we should split program_path
             process = subprocess.Popen(
                 program_path, 
-                shell=True,
+                shell=False,
                 cwd=str(Path(program_path).parent)
             )
             
@@ -1236,6 +1269,41 @@ class TaskScheduler(QObject):
                 
                 time.sleep(2) # Check every 2 seconds (was 5s)
                 loop_count += 1
+            
+            logger.debug(f"Stuck Monitor finished for '{task_name}'")
+            self.update_detector_stopped.emit(task_id)
+
+        thread = threading.Thread(target=monitor_thread, daemon=True)
+        thread.start()
+
+    def _cleanup_finished_processes(self):
+        """
+        Check for processes that have finished naturally and clean them up.
+        Run periodically to prevent 'active_processes' from growing indefinitely.
+        """
+        finished_tasks = []
+        
+        # Check all active processes
+        for task_id, process in list(self.active_processes.items()):
+            try:
+                # poll() returns None if running, exit code if finished
+                exit_code = process.poll()
+                if exit_code is not None:
+                    finished_tasks.append((task_id, exit_code))
+            except Exception as e:
+                 logger.error(f"Error checking process status for task {task_id}: {e}")
+        
+        # Clean up finished ones
+        for task_id, exit_code in finished_tasks:
+            try:
+                if task_id in self.active_processes:
+                    del self.active_processes[task_id]
+                    
+                self.task_finished.emit(task_id)
+                self.execution_logger.log_event(task_id, "Unknown", "FINISHED", f"Process exited naturally (Code {exit_code})")
+                logger.debug(f"Task ID {task_id} finished naturally (Exit Code {exit_code}). Cleaned up.")
+            except Exception as e:
+                logger.error(f"Error cleaning up task {task_id}: {e}")
             
             logger.debug(f"Stuck Monitor finished for '{task_name}'")
             self.update_detector_stopped.emit(task_id)

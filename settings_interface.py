@@ -36,6 +36,7 @@ from task_manager import SettingsManager
 from logger import get_logger
 from language_manager import get_language_manager, set_language
 from config import DEFAULT_LANGUAGE, DEFAULT_BLOCKLIST_PROCESSES
+from startup_manager import StartupManager
 
 logger = get_logger(__name__)
 
@@ -57,6 +58,9 @@ class SettingsInterface(ScrollArea):
         saved_language = self.settings_manager.get('language', DEFAULT_LANGUAGE)
         self.lang_manager.set_language(saved_language)
         
+        # Initialize startup manager
+        self.startup_manager = StartupManager()
+
         self.scrollWidget = QWidget()
         self.expandLayout = QVBoxLayout(self.scrollWidget)
         
@@ -81,6 +85,20 @@ class SettingsInterface(ScrollArea):
         
         # --- General Settings Group ---
         self.generalGroup = SettingCardGroup("General", self.scrollWidget)
+
+        # Run at Startup Setting
+        self.runAtStartupCard = SwitchSettingCard(
+            FluentIcon.POWER_BUTTON,
+            "Run at Startup",
+            "Automatically start the application when you log in",
+            configItem=None, # We manage this manually via StartupManager
+            parent=self.generalGroup
+        )
+        # Set initial state
+        self.runAtStartupCard.setChecked(self.startup_manager.is_autostart_enabled())
+        # Connect signal
+        self.runAtStartupCard.checkedChanged.connect(self._on_run_at_startup_changed)
+        self.generalGroup.addSettingCard(self.runAtStartupCard)
         
         # Execution Mode Setting
         self.executionModeCard = SettingCard(
@@ -1040,3 +1058,31 @@ class SettingsInterface(ScrollArea):
         self.updateFrequencyComboBox.setCurrentIndex(frequency_map.get(frequency, 0))
         
         logger.debug("UI text reloaded for new language")
+        logger.debug("UI text reloaded for new language")
+
+    def _on_run_at_startup_changed(self, is_checked: bool):
+        """Handle run at startup toggle."""
+        success = self.startup_manager.set_autostart(is_checked)
+        if success:
+            logger.info(f"Run at Startup set to: {is_checked}")
+            InfoBar.success(
+                title="Settings Updated",
+                content=f"Run at Startup {'enabled' if is_checked else 'disabled'}",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=2000,
+                parent=self
+            )
+        else:
+            # Revert switch if failed
+            self.runAtStartupCard.setChecked(not is_checked)
+            InfoBar.error(
+                title="Error",
+                content="Failed to update startup settings",
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self
+            )
