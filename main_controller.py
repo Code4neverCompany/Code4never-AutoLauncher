@@ -114,26 +114,19 @@ class MainController(QObject):
     
     def add_task(self, task_data: dict) -> bool:
         """Add a new task."""
-        success = self.task_manager.add_task(task_data)
-        if success:
-            # Re-fetch full task with ID
-            # This is a bit inefficient, usually add_task returns the id or updated dict
-            # For now, we reload all or find it. 
-            # Simplified: reload scheduler for this task
-            # Ideally TaskManager.add_task should update the dict with ID.
-            # Assuming task_data now has ID or we reload.
+        new_task_id = self.task_manager.add_task(task_data)
+        
+        if new_task_id is not None:
+            # Fetch the fully confirmed task from manager
+            new_task = self.task_manager.get_task(new_task_id)
             
-            # Let's just reload everything for safety or just add this one if we had the ID.
-            # TaskManager.add_task updates the list in memory.
-            # We can get the last added task.
-            all_tasks = self.task_manager.get_all_tasks()
-            if all_tasks:
-                new_task = all_tasks[-1]
+            if new_task:
                 if new_task.get('enabled', True):
                     self.scheduler.add_job(new_task)
                 self.task_added.emit(new_task)
+                return True
                 
-        return success
+        return False
 
     def delete_task(self, task_id: int) -> bool:
         """Delete a task."""

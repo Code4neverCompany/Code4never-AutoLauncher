@@ -1,5 +1,15 @@
 # AutoLauncher Release Notes
 
+## v1.7.0 (2026-01-15) - MVC Architecture & Backend Stability
+This major release transforms the application architecture for long-term stability and introduces critical backend safeguards.
+
+### Key Changes
+*   **MVC Refactoring**: Complete architectural overhaul separating UI (View) from Logic (Controller). This makes the app more robust and easier to maintain.
+*   **Atomic Writes**: "Safe Save" mechanism for `tasks.json` and `settings.json` prevents data corruption if the PC crashes during a save.
+*   **Zombie Process Cleanup**: New background collector finds and kills processes that have finished but are still tracking as "Running".
+*   **Blocklist Externalization**: Hardcoded game blocklists are now in `blocklist.json`, allowing you to add/remove games easily.
+*   **Input Freeze Fix**: Resolved a critical bug where the keyboard/mouse would lock up on startup due to hook initialization order.
+
 ## v1.6.0 (2025-12-18) - Feature Update: Native OCR & Process Tracking
 This major release transitions the "Stuck Detector" from unreliable pixel-matching to **Native Windows OCR (Optical Character Recognition)**, enabling the app to "read" game screens for update dialogs. It also includes critical fixes for game process tracking.
 

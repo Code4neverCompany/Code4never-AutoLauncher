@@ -99,6 +99,15 @@
         "wake_option": "Wake computer to run this task",
         "sleep_option": "Sleep after task completion"
     },
+    "widgets": {
+        "status_enabled": "Enabled",
+        "status_running": "Running",
+        "status_disabled": "Disabled",
+        "status_expired": "Expired",
+        "status_paused": "Paused",
+        "status_error": "Error",
+        "starting_soon": "Starting soon..."
+    },
     "about": {
         "check_update": "Check for Update",
         "checking": "Checking...",

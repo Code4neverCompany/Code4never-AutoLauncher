@@ -16,19 +16,6 @@ logger = get_logger(__name__)
 
 # Windows API Constants and Types
 EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
-
-# Fix for comtypes in bundled environment
-try:
-    import comtypes.client
-    # Set a writable directory for comtypes generated files
-    temp_dir = os.path.join(tempfile.gettempdir(), "comtypes_cache")
-    if not os.path.exists(temp_dir):
-        os.makedirs(temp_dir, exist_ok=True)
-    comtypes.client.gen_dir = temp_dir
-    logger.debug(f"Comtypes cache set to: {temp_dir}")
-except Exception as e:
-    logger.debug(f"Could not set comtypes cache: {e}")
-
 class StuckDetector:
     """
     Monitors processes for specific window titles that indicate a stuck state
@@ -37,172 +24,26 @@ class StuckDetector:
     
     def __init__(self):
         self._user32 = ctypes.windll.user32
-    
-    def get_window_titles(self, pid: int) -> List[str]:
-        """
-        Get all visible window titles belonging to a specific Process ID.
-        """
-        titles = []
-        
-        def enum_windows_callback(hwnd, lParam):
-            try:
-                window_pid = ctypes.c_ulong()
-                self._user32.GetWindowThreadProcessId(hwnd, ctypes.byref(window_pid))
-                
-                if window_pid.value == pid:
-                    length = self._user32.GetWindowTextLengthW(hwnd)
-                    if length > 0:
-                        buff = ctypes.create_unicode_buffer(length + 1)
-                        self._user32.GetWindowTextW(hwnd, buff, length + 1)
-                        if buff.value:
-                            titles.append(buff.value)
-                return True
-            except Exception:
-                return True
+        self._setup_comtypes()
 
+    def _setup_comtypes(self):
+        """Configure comtypes cache directory to avoid permission errors."""
         try:
-            self._user32.EnumWindows(EnumWindowsProc(enum_windows_callback), 0)
+            import comtypes.client
+            temp_dir = os.path.join(tempfile.gettempdir(), "comtypes_cache")
+            if not os.path.exists(temp_dir):
+                os.makedirs(temp_dir, exist_ok=True)
+            comtypes.client.gen_dir = temp_dir
+            logger.debug(f"Comtypes cache set to: {temp_dir}")
         except Exception as e:
-            logger.error(f"Error enumerating windows for PID {pid}: {e}")
-            
-        return titles
-
-    def get_window_titles_and_pids(self) -> List[tuple]:
-        """
-        Get all visible top-level window titles and their PIDs.
-        Returns list of (title, pid, hwnd)
-        """
-        results = []
-        
-        def enum_windows_callback(hwnd, lParam):
-            try:
-                if self._user32.IsWindowVisible(hwnd):
-                    length = self._user32.GetWindowTextLengthW(hwnd)
-                    if length > 0:
-                        buff = ctypes.create_unicode_buffer(length + 1)
-                        self._user32.GetWindowTextW(hwnd, buff, length + 1)
-                        if buff.value:
-                            window_pid = ctypes.c_ulong()
-                            self._user32.GetWindowThreadProcessId(hwnd, ctypes.byref(window_pid))
-                            results.append((buff.value, window_pid.value, hwnd))
-                return True
-            except Exception:
-                return True
-
-        try:
-            self._user32.EnumWindows(EnumWindowsProc(enum_windows_callback), 0)
-        except Exception as e:
-            logger.error(f"Error enumerating all windows: {e}")
-            
-        return results
-
-    def is_process_stuck(self, pids: List[int], keywords: List[str]) -> Optional[str]:
-        """
-        Check if any of the processes has a window title matching the keywords.
-        """
-        if not keywords or not pids:
-            return None
-            
-        try:
-            for pid in pids:
-                if not pid: continue
-                titles = self.get_window_titles(pid)
-                
-                for title in titles:
-                    title_lower = title.lower()
-                    for keyword in keywords:
-                        if keyword.lower() in title_lower:
-                            return title
-            return None
-        except Exception as e:
-            logger.error(f"Error checking stuck state: {e}")
-            return None
-
-    def check_window_content(self, pids: List[Optional[int]], keywords: List[str], timeout_per_win: float = 2.0) -> bool:
-        """
-        Check if specified processes (or all windows if pid is None) contain keywords.
-        Advanced multi-pass optimization.
-        """
-        if not keywords or not pids:
-            return False
-            
-        try:
-            from pywinauto import Desktop, Application
-            
-            # Fast pass: Get all window titles and PIDs using Win32 API
-            win_info = self.get_window_titles_and_pids()
-            
-            # 1. Prioritized Windows (PIDs we are tracking or titles that match keywords)
-            candidate_hwnds = []
-            
-            # Filter for PIDs
-            tracked_pids = [p for p in pids if p is not None]
-            
-            for title, pid, hwnd in win_info:
-                # If window belongs to tracked PID, check it
-                if pid in tracked_pids:
-                    candidate_hwnds.append(hwnd)
-                    continue
-                
-                # If title contains keyword, check it regardless of PID
-                title_lower = title.lower()
-                for kw in keywords:
-                    if kw.lower() in title_lower:
-                        candidate_hwnds.append(hwnd)
-                        break
-            
-            # If no pid specified (global search), and no fast-match titles, fallback to all VISIBLE windows
-            if None in pids and not candidate_hwnds:
-                # Limit to top 30 most recent visible windows to avoid total system lag
-                # User says speed is not a huge issue, so we broaden the search
-                candidate_hwnds = [hwnd for title, pid, hwnd in win_info[:30]]
-
-            # Deep pass using pywinauto on candidates
-            for hwnd in candidate_hwnds:
-                try:
-                    # Connect via HWND for speed and precision
-                    app = Application(backend="uia").connect(handle=hwnd, timeout=1)
-                    win = app.window(handle=hwnd)
-                    
-                    win_title = win.window_text()
-                    logger.debug(f"Optimized Deep-Dive: '{win_title}'")
-                    
-                    # Search descendants (limit to 50 for performance)
-                    descendants = win.descendants()
-                    count = 0
-                    for child in descendants:
-                        count += 1
-                        if count > 50: break # Safety limit
-                        
-                        try:
-                            text = child.window_text()
-                            if text:
-                                text_lower = text.lower()
-                                for keyword in keywords:
-                                    if keyword.lower() in text_lower:
-                                        logger.warning(f"UI MATCH: Found '{keyword}' in control '{text}'")
-                                        return True
-                        except:
-                            continue
-                except Exception:
-                    continue
-            return False
-        except ImportError:
-            logger.error("pywinauto not installed. Visual detection disabled.")
-            return False
-        except Exception as e:
-            logger.error(f"Error in visual detection: {e}")
-            return False
-    
-    def check_global_window_content(self, keywords: List[str]) -> bool:
-        """Check all visible windows for keywords in their content."""
-        return self.check_window_content([None], keywords)
+            logger.debug(f"Could not set comtypes cache: {e}")
 
     def check_window_content_ocr(self, hwnd: int) -> str:
         """
         Use Windows Native OCR to read text from a window's screenshot.
         Requires 'Pillow' library.
         """
+        temp_img = os.path.join(tempfile.gettempdir(), f"autolauncher_ocr_{hwnd}.png")
         try:
             from PIL import ImageGrab
             import subprocess
@@ -218,39 +59,25 @@ class StuckDetector:
                 return ""
             
             # Capture screenshot
-            # Note: ImageGrab.grab(bbox) expects (left, top, right, bottom)
-            # This captures the screen area, so if window is overlapped, it sees what's on top.
-            # Best we can do without specialized DWM APIs.
-            # Also, we need to ensure we don't capture if off-screen.
+            img = ImageGrab.grab(bbox=(rect.left, rect.top, rect.right, rect.bottom))
+            img.save(temp_img)
             
-            temp_img = os.path.join(tempfile.gettempdir(), f"autolauncher_ocr_{hwnd}.png")
-            
+            # Check for black screen (common in Exclusive Fullscreen games)
             try:
-                img = ImageGrab.grab(bbox=(rect.left, rect.top, rect.right, rect.bottom))
-                img.save(temp_img)
-                
-                # Check for black screen (common in Exclusive Fullscreen games)
-                try:
-                    extrema = img.convert("L").getextrema()
-                    if extrema == (0, 0):
-                        logger.warning(f"OCR Warning: Captured screenshot for HWND {hwnd} is completely BLACK. Try running the game in Windowed/Borderless mode.")
-                        return ""
-                except:
-                    pass
-                    
-            except Exception as e:
+                extrema = img.convert("L").getextrema()
+                if extrema == (0, 0):
+                    logger.warning(f"OCR: Screenshot for HWND {hwnd} is BLACK. Try Windowed/Borderless.")
+                    return ""
+            except:
+                pass
 
-                logger.debug(f"Screenshot failed for HWND {hwnd}: {e}")
-                return ""
-                
-                
-            # Use compiled C# executable if available (preferred)
+            # Determine OCR executable path
             ocr_exe = os.path.join(os.path.dirname(__file__), "ocr.exe")
             if not os.path.exists(ocr_exe):
-                 # Fallback path logic
                  base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
                  ocr_exe = os.path.join(base_dir, "ocr.exe")
 
+            cmd = []
             if os.path.exists(ocr_exe):
                  cmd = [ocr_exe, temp_img]
             else:
@@ -262,27 +89,23 @@ class StuckDetector:
                  
                  cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps_script, temp_img]
             
-            # Run with timeout
-            # Note: ocr.exe is a console app, capture output
+            # Run OCR
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
-            
-            text = result.stdout.strip()
-            
-            # Cleanup
-            try:
-                os.remove(temp_img)
-            except:
-                pass
-                
-            return text
+            return result.stdout.strip()
 
-            
         except ImportError:
-            logger.warning("Pillow not installed. OCR disabled.")
+            logger.warning("OCR Disabled: Pillow library not installed.")
             return ""
         except Exception as e:
-            logger.error(f"Error in Native OCR: {e}")
+            logger.error(f"OCR Error for HWND {hwnd}: {e}")
             return ""
+        finally:
+            # Always clean up temp file
+            if os.path.exists(temp_img):
+                try:
+                    os.remove(temp_img)
+                except:
+                    pass
 
     def find_confirmation_dialog(self, pids: List[Optional[int]], keywords: List[str]) -> bool:
         """
