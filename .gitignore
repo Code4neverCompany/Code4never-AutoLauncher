@@ -66,3 +66,9 @@ etag_cache.json
 detection.log
 autolauncher_ocr_*.png
 verify_detection.py
+
+# Local verification scripts
+verify_refactor.py
+
+# Runtime state
+last_update_check.json

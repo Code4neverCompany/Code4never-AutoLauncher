@@ -37,6 +37,7 @@ from qfluentwidgets import (
 )
 
 from task_manager import TaskManager, SettingsManager
+from theme_manager import ThemeManager
 from task_dialog import TaskDialog
 from scheduler import TaskScheduler
 from settings_interface import SettingsInterface
@@ -64,24 +65,21 @@ class AutolauncherApp(FluentWindow):
     Displays scheduled tasks with countdown timers and provides task management.
     """
     
-    def __init__(self):
+
+    def __init__(self, controller):
         """Initialize the Autolauncher application."""
-        # CRITICAL: Initialize SettingsManager BEFORE super().__init__()
-        # because FluentWindow applies stylesheets during __init__
-        # and we need the correct theme set BEFORE that happens
-        self.settings_manager = SettingsManager()
+        self.controller = controller
         
-        # Store expected theme for protection
-        self._expected_theme = self.settings_manager.get('theme', 'Light')
+        # Alias managers from controller for compatibility
+        self.settings_manager = controller.settings_manager
+        self.theme_manager = controller.theme_manager
+        self.task_manager = controller.task_manager
+        self.scheduler = controller.scheduler
+        self.update_manager = controller.update_manager
         
-        # Apply saved theme BEFORE FluentWindow.__init__() applies stylesheets
-        if self._expected_theme == 'Dark':
-            setTheme(Theme.DARK)
-        else:
-            setTheme(Theme.LIGHT)
-        logger.info(f"Pre-init theme: {self._expected_theme}")
+        # NOTE: Theme is already applied by MainController at this point
         
-        # NOW call FluentWindow.__init__() with correct theme already set
+        # NOW call FluentWindow.__init__() 
         super().__init__()
         
         # Disable Windows 11 Mica effect for stability
@@ -89,13 +87,10 @@ class AutolauncherApp(FluentWindow):
         self.setMicaEffectEnabled(False)
         
         # Connect to qconfig theme change signal for protection
-        qconfig.themeChanged.connect(self._on_theme_changed)
+        self.theme_manager.setup_protection()
         
-        # Initialize remaining managers
-        self.task_manager = TaskManager()
-        self.scheduler = TaskScheduler()
-        self.update_manager = UpdateManager()
-        logger.info(f"Applied theme: {self._expected_theme}")
+        # Connect Controller Signals to View Slots
+        self._connect_controller_signals()
         
         # Load saved language BEFORE creating UI
         saved_language = self.settings_manager.get('language', 'en')
@@ -128,59 +123,39 @@ class AutolauncherApp(FluentWindow):
         
         logger.info("Autolauncher application initialized")
         
-        # Setup auto-update after a short delay to ensure UI is fully ready
-        QTimer.singleShot(100, self._setup_auto_update)
-    
-    def _on_theme_changed(self, theme):
-        """Handle theme change signals - protect against unexpected changes."""
-        current_expected = 'Dark' if theme == Theme.DARK else 'Light'
-        saved_theme = self.settings_manager.get('theme', 'Light')
-        
-        if current_expected != saved_theme:
-            # Theme was changed by something other than our toggle - revert it
-            logger.warning(f"Unexpected theme change to {current_expected}, reverting to {saved_theme}")
-            QTimer.singleShot(50, lambda: setTheme(Theme.DARK if saved_theme == 'Dark' else Theme.LIGHT))
-        else:
-            logger.debug(f"Theme change to {current_expected} (expected)")
+        QTimer.singleShot(100, self.controller.setup_auto_update)
 
-    def _setup_auto_update(self):
-        """Setup automatic update checking based on user settings."""
-        frequency = self.settings_manager.get('auto_update_frequency', 'startup')
+    def _connect_controller_signals(self):
+        """Connect signals from Controller to View methods."""
+        # Task Signals
+        self.controller.task_added.connect(self._on_task_added_by_controller)
+        self.controller.task_updated.connect(self._on_task_updated_by_controller)
+        self.controller.task_deleted.connect(self._on_task_deleted_by_controller)
         
-        if frequency == 'manual':
-            logger.info("Auto-update checks are disabled (manual mode)")
-            return
+        # Update Signals
+        self.controller.update_available.connect(self._handle_update_available)
+        self.controller.no_update_available.connect(lambda: logger.info("View: No update available"))
         
-        # Store pending update info
-        self.pending_update_info = None
-        self.pending_update_path = None
+        # Scheduler Signals (relayed by controller)
+        self.controller.task_started.connect(self._handle_task_started)
+        self.controller.task_finished.connect(self._handle_task_finished)
+        self.controller.task_postponed.connect(self._handle_task_postponed)
+        self.controller.ask_user_permission.connect(self._handle_task_permission_request)
+        self.controller.update_detector_started.connect(self._on_update_detector_started)
+        self.controller.update_detector_stopped.connect(self._on_update_detector_stopped)
+
+    def _on_task_added_by_controller(self, task):
+        """Handle task added signal."""
+        self._refresh_task_table()
         
-        # Setup initial check on startup (for startup and automatic modes)
-        if frequency in ['startup', 'automatic']:
-            self.initial_update_timer = QTimer(self)
-            self.initial_update_timer.setSingleShot(True)
-            self.initial_update_timer.timeout.connect(self._perform_startup_update_check)
-            self.initial_update_timer.start(10000)  # 10 seconds after startup
-            logger.info("Scheduled startup update check in 10 seconds")
+    def _on_task_updated_by_controller(self, task_id, task):
+        """Handle task updated signal."""
+        self._refresh_task_table()
         
-        # Setup periodic check timer for automatic mode only
-        if frequency == 'automatic':
-            self.periodic_update_timer = QTimer(self)
-            self.periodic_update_timer.timeout.connect(self._perform_periodic_update_check)
-            # Check every 2 minutes with ETag efficiency
-            self.periodic_update_timer.start(120000)  # 2 minutes in milliseconds
-            logger.info("Enabled automatic update checking every 2 minutes (ETag-based)")
-    
-    def _perform_startup_update_check(self):
-        """Perform update check on startup."""
-        if self.update_manager.should_check_for_updates():
-            logger.info("Performing startup update check...")
-            self._perform_update_check()
-    
-    def _perform_periodic_update_check(self):
-        """Perform periodic update check (always checks, ignores frequency restrictions)."""
-        logger.info("Performing periodic update check...")
-        self._perform_update_check()
+    def _on_task_deleted_by_controller(self, task_id):
+        """Handle task deleted signal."""
+        self._refresh_task_table()
+
     
     def _perform_update_check(self):
         """Execute background update check."""
@@ -207,6 +182,14 @@ class AutolauncherApp(FluentWindow):
         # Update the About interface dashboard
         if hasattr(self, 'aboutInterface') and hasattr(self.aboutInterface, 'dashboard'):
             self.aboutInterface.dashboard.show_update_available(update_info)
+            
+        # SPAM PREVENTION: Check if we already notified about this version
+        if version in self.notified_versions:
+            logger.debug(f"Already notified user about version {version}, skipping alert.")
+            return
+
+        # Mark as notified immediately
+        self.notified_versions.add(version)
             
         # Smart Auto-Update Logic (only in Smart mode)
         frequency = self.settings_manager.get('auto_update_frequency', 'startup')
@@ -270,17 +253,25 @@ class AutolauncherApp(FluentWindow):
                 return
         
         # For Python script mode, just show notification and open browser
+        # For Python script mode, just show notification AND button to open browser
         if not self.update_manager.is_executable:
-            InfoBar.info(
+            info_bar = InfoBar.info(
                 title=f"Update Available: v{version}",
-                content="Opening release page in browser...",
+                content="New version available. Click to view on GitHub.",
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
-                duration=5000,
+                duration=5000, # Show for 5 seconds as requested
                 parent=self
             )
-            self.update_manager.open_download_page(update_info['url'])
+            
+            # Create button to open link
+            view_btn = PushButton("View Release")
+            view_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            # Use default webbrowser module directly or via update_manager helper
+            view_btn.clicked.connect(lambda: self.update_manager.open_download_page(update_info['url']))
+            
+            info_bar.addWidget(view_btn)
             return
         
         # For executable mode (Manual/Startup modes), show notification with action to navigate to About page
@@ -310,7 +301,7 @@ class AutolauncherApp(FluentWindow):
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
-            duration=-1,  # Persistent until clicked
+            duration=5000, # Transient notification (5s) to avoid blocking screen
             parent=self
         )
         
@@ -509,44 +500,7 @@ class AutolauncherApp(FluentWindow):
     
     def _toggle_theme(self):
         """Toggle between light and dark themes."""
-        current_theme = self.settings_manager.get('theme', 'Light')
-        
-        if current_theme == 'Light':
-            new_theme = 'Dark'
-            setTheme(Theme.DARK)
-        else:
-            new_theme = 'Light'
-            setTheme(Theme.LIGHT)
-        
-        self.settings_manager.set('theme', new_theme)
-        logger.info(f"Theme changed to {new_theme}")
-        
-        # Show notification
-        # Show notification
-        InfoBar.success(
-            title=get_text('main_window.theme_changed'),
-            content=get_text('main_window.theme_switched', theme=new_theme),
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.TOP,
-            duration=2000,
-            parent=self
-        )
-    
-    def _apply_saved_theme(self):
-        """Apply the saved theme preference."""
-        saved_theme = self.settings_manager.get('theme', 'Light')
-        
-        # Force re-application of theme
-        if saved_theme == 'Dark':
-            setTheme(Theme.DARK)
-        else:
-            setTheme(Theme.LIGHT)
-            
-        # Force repaint to ensure colors are correct
-        self.repaint()
-        
-        logger.debug(f"Applied saved theme: {saved_theme}")
+        self.theme_manager.toggle_theme(self)
     
     def _create_main_widget(self):
         """Create the main widget with toolbar and task table."""
@@ -778,7 +732,7 @@ class AutolauncherApp(FluentWindow):
             task: Task dictionary
             
         Returns:
-            Formatted countdown string (with ⏳ prefix if postponed)
+            Formatted countdown string (with [Postponed] prefix if postponed)
         """
         try:
             task_id = task.get('id')
@@ -878,26 +832,11 @@ class AutolauncherApp(FluentWindow):
         task = self.task_manager.get_task(task_id)
         
         if task:
-            if self.scheduler.execute_immediately(task):
-                InfoBar.success(
-                    title=get_text('main_window.task_started'),
-                    content=get_text('main_window.executing_task', name=task['name']),
-                    orient=Qt.Orientation.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=2000,
-                    parent=self
-                )
-            else:
-                InfoBar.error(
-                    title=get_text('main_window.error'),
-                    content=get_text('main_window.failed_start'),
-                    orient=Qt.Orientation.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.TOP,
-                    duration=3000,
-                    parent=self
-                )
+            # Execute via controller
+            self.controller.execute_task_now(task_id)
+            
+            # Notification is handled by _handle_task_started signal
+            logger.info(f"Manually executed task ID {task_id}")
 
 
     def _add_task(self):
@@ -914,30 +853,29 @@ class AutolauncherApp(FluentWindow):
         if result:
             if dialog.validate_input():
                 task_data = dialog.get_task_data()
-                
+                name = task_data.get('name', 'Unknown')
 
-                if self.task_manager.add_task(task_data):
-                    self.scheduler.add_job(task_data)
-                    self._refresh_task_table()
-                    
+                # Add task via controller
+                if self.controller.add_task(task_data):
                     InfoBar.success(
-                        title=get_text('main_window.task_added'),
-                        content=get_text('main_window.task_scheduled', name=task_data['name']),
+                        title="Task Added",
+                        content=f"Task '{name}' has been scheduled",
                         orient=Qt.Orientation.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.TOP,
                         duration=2000,
                         parent=self
                     )
-                    logger.info(f"Added task: {task_data['name']}")
+                    logger.info(f"Added new task: {name}")
+                    # Table refresh handled by task_added signal
                 else:
                     InfoBar.error(
-                        title=get_text('main_window.error'),
-                        content=get_text('main_window.failed_save'),
+                        title="Error",
+                        content="Failed to add task",
                         orient=Qt.Orientation.Horizontal,
                         isClosable=True,
                         position=InfoBarPosition.TOP,
-                        duration=3000,
+                        duration=2000,
                         parent=self
                     )
             else:
@@ -1049,9 +987,8 @@ class AutolauncherApp(FluentWindow):
             self.repaint()
             
             if result:
-                if self.task_manager.delete_task(task_id):
-                    self.scheduler.remove_job(task_id)
-                    self._refresh_task_table()
+                if self.controller.delete_task(task_id):
+                    # Table refresh handled by task_deleted signal
                     
                     InfoBar.success(
                         title="Task Deleted",
@@ -1065,12 +1002,7 @@ class AutolauncherApp(FluentWindow):
                     logger.info(f"Deleted task ID {task_id}")
     
     def _load_scheduled_tasks(self):
-        """Load all enabled tasks into the scheduler.
-        
-        Also restores postponed tasks - if a task has a postponed_until time
-        that's still in the future, we schedule the retry instead of the 
-        original schedule.
-        """
+        # Load all enabled tasks into the scheduler and restore postponed tasks
         
         enabled_tasks = self.task_manager.get_enabled_tasks()
         
@@ -1254,7 +1186,7 @@ class AutolauncherApp(FluentWindow):
         # Guard against early calls before settings_manager is initialized
         if event.type() in [QEvent.Type.PaletteChange, QEvent.Type.ActivationChange]:
             if hasattr(self, 'settings_manager') and self.settings_manager:
-                self._apply_saved_theme()
+                self.theme_manager.apply_saved_theme()
     
     def _toggle_task_pause(self):
         """Toggle pause/resume for the selected task."""
@@ -1364,6 +1296,7 @@ class AutolauncherApp(FluentWindow):
 def main():
     """Main entry point for the application."""
     
+
     # Windows-specific: Set App User Model ID
     # This ensures Windows shows our custom icon and name in taskbar/Task Manager
     # instead of grouping with Python
@@ -1374,15 +1307,76 @@ def main():
         logger.debug("Windows App User Model ID set")
     except Exception as e:
         logger.warning(f"Failed to set App User Model ID: {e}")
+
+    # Ensure High DPI scaling support
+    if hasattr(Qt.ApplicationAttribute, 'AA_EnableHighDpiScaling'):
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
+    if hasattr(Qt.ApplicationAttribute, 'AA_UseHighDpiPixmaps'):
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
+
+    # ---------------------------------------------------------
+    # SINGLE INSTANCE CHECK (Mutex + Window Restore)
+    # ---------------------------------------------------------
+    from ctypes import wintypes
+    import win32gui
+    import win32con
     
-    # Create and show main window
-    window = AutolauncherApp()
+    MUTEX_NAME = "Global\\AutoLauncher_SingleInstance_Mutex_v1"
+    
+    # Try to create named mutex
+    kernel32 = ctypes.windll.kernel32
+    mutex = kernel32.CreateMutexW(None, False, MUTEX_NAME)
+    last_error = kernel32.GetLastError()
+    
+    # ERROR_ALREADY_EXISTS = 183
+    if last_error == 183:
+        # App is already running
+        logger.info("Another instance is already running. Focusing existing window...")
+        
+        # Find window by title partial match
+        # Since we added version number, we search for prefix
+        target_title_prefix = "AutoLauncher v"
+        
+        def enum_handler(hwnd, ctx):
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                if title.startswith(target_title_prefix):
+                    # Found it!
+                    # Restore if minimized
+                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                    # Bring to front
+                    win32gui.SetForegroundWindow(hwnd)
+                    return False # Stop enumeration
+            return True
+
+        try:
+            win32gui.EnumWindows(enum_handler, None)
+        except Exception:
+            pass # EnumWindows stops by raising exception when we return False (sometimes)
+            
+        # Exit this instance
+        sys.exit(0)
+    
+    # ---------------------------------------------------------
+    
+    # Create application
+    app = QApplication(sys.argv)
+    
+    # Initialize Main Controller (Logic/Data)
+    # This also initializes settings and applies theme immediately
+    from main_controller import MainController
+    controller = MainController()
+    
+    # Create main window (View) and inject controller
+    window = AutolauncherApp(controller)
     window.show()
     
-    # Run event loop
-    app = QApplication.instance()
+    # Start Application Logic
+    controller.start()
+    controller.setup_auto_update()
+    
+    # Execute application
     sys.exit(app.exec())
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

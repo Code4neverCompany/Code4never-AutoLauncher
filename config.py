@@ -85,6 +85,7 @@ _migrate_user_data()
 # File Paths
 TASKS_FILE = DATA_DIR / "tasks.json"
 SETTINGS_FILE = DATA_DIR / "settings.json"
+BLOCKLIST_FILE = DATA_DIR / "blocklist.json"
 
 # Icon Paths
 WINDOW_ICON_PATH = ASSETS_DIR / "icon.ico"

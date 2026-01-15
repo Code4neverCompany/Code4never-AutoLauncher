@@ -4,6 +4,7 @@ Handles data persistence using JSON for storing and retrieving scheduled tasks.
 """
 
 import json
+import os
 from typing import List, Dict, Optional
 from pathlib import Path
 from datetime import datetime
@@ -63,12 +64,26 @@ class TaskManager:
             True if successful, False otherwise
         """
         try:
-            with open(self.tasks_file, 'w', encoding='utf-8') as f:
+            # Atomic write: Write to temp file first, then rename
+            temp_file = self.tasks_file.with_suffix('.tmp')
+            with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(self.tasks, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+            
+            # Atomic replacement
+            os.replace(temp_file, self.tasks_file)
+            
             logger.debug(f"Saved {len(self.tasks)} tasks to {self.tasks_file}")
             return True
         except Exception as e:
             logger.error(f"Error saving tasks: {e}")
+            # Try to clean up temp file if it exists
+            try:
+                if 'temp_file' in locals() and temp_file.exists():
+                    os.unlink(temp_file)
+            except:
+                pass
             return False
     
     def add_task(self, task: Dict) -> bool:
@@ -296,12 +311,25 @@ class SettingsManager:
             True if successful, False otherwise
         """
         try:
-            with open(self.settings_file, 'w', encoding='utf-8') as f:
+            # Atomic write: Write to temp file first, then rename
+            temp_file = self.settings_file.with_suffix('.tmp')
+            with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(self.settings, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            
+            # Atomic replacement
+            os.replace(temp_file, self.settings_file)
+            
             logger.debug(f"Saved settings to {self.settings_file}")
             return True
         except Exception as e:
             logger.error(f"Error saving settings: {e}")
+            try:
+                if 'temp_file' in locals() and temp_file.exists():
+                    os.unlink(temp_file)
+            except:
+                pass
             return False
     
     def get(self, key: str, default=None):
