@@ -124,40 +124,35 @@ class InputMonitor:
         
         logger.info("InputMonitor initialized")
     
-    def _keyboard_hook_callback(self, nCode: int, wParam: int, lParam: int) -> int:
-        """Low-level keyboard hook callback."""
+    def _keyboard_hook_callback(self, nCode, wParam, lParam):
+        """Callback for keyboard events."""
         if nCode >= 0:
             kb_struct = ctypes.cast(lParam, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
+            is_injected = (kb_struct.flags & LLKHF_INJECTED) != 0
             
-            # Check if this is a key press (not release) and NOT injected
-            if wParam in (WM_KEYDOWN, WM_SYSKEYDOWN):
-                is_injected = bool(kb_struct.flags & LLKHF_INJECTED)
-                
-                if not is_injected:
-                    self._last_real_input = time.time()
+            if not is_injected:
+                self._last_real_input = time.time()
+                if not self._has_detected_input:
                     self._has_detected_input = True
-                    # Logging removed for performance in critical hook path
+                    logger.info("Real KEYBOARD input detected")
         
-        # Call next hook
-        return self._user32.CallNextHookEx(self._keyboard_hook, nCode, wParam, lParam)
-    
-    def _mouse_hook_callback(self, nCode: int, wParam: int, lParam: int) -> int:
-        """Low-level mouse hook callback."""
+        return ctypes.windll.user32.CallNextHookEx(None, nCode, wParam, lParam)
+
+    def _mouse_hook_callback(self, nCode, wParam, lParam):
+        """Callback for mouse events."""
         if nCode >= 0:
-            mouse_struct = ctypes.cast(lParam, ctypes.POINTER(MSLLHOOKSTRUCT)).contents
+            ms_struct = ctypes.cast(lParam, ctypes.POINTER(MSLLHOOKSTRUCT)).contents
+            is_injected = (ms_struct.flags & LLMHF_INJECTED) != 0
             
-            # Check for mouse button or movement and NOT injected
-            # Skip pure mouse moves to reduce noise (only track clicks and wheel)
-            if wParam in (WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_MOUSEWHEEL):
-                is_injected = bool(mouse_struct.flags & LLMHF_INJECTED)
-                
-                if not is_injected:
-                    self._last_real_input = time.time()
+            if not is_injected:
+                # Filter mouse move jitter?
+                # For now just trust it.
+                self._last_real_input = time.time()
+                if not self._has_detected_input:
                     self._has_detected_input = True
-                    # Logging removed for performance in critical hook path
+                    logger.info("Real MOUSE input detected")
         
-        # Call next hook
-        return self._user32.CallNextHookEx(self._mouse_hook, nCode, wParam, lParam)
+        return ctypes.windll.user32.CallNextHookEx(None, nCode, wParam, lParam)
     
     def _hook_thread(self):
         """Background thread that runs the message loop for hooks."""
