@@ -29,7 +29,9 @@ class StatusBadge(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(100, 24)
-        self._status = "Enabled"
+        self._status = "Enabled" # Internal state
+        self._display_text = "Enabled" # Initial display text (will be localized)
+        self._bg_color = QColor(16, 124, 16) # Default Green
         self._subtitle = ""  # For additional info like "@ 18:30"
         self._pulse_opacity = 1.0
         
@@ -49,30 +51,69 @@ class StatusBadge(QWidget):
     def pulseOpacity(self, value):
         self._pulse_opacity = value
         self.update()
+
+    def start_pulse(self):
+        if not self._pulse_animation.state() == QPropertyAnimation.State.Running:
+            self._pulse_animation.start()
+
+    def stop_pulse(self):
+        if self._pulse_animation.state() == QPropertyAnimation.State.Running:
+            self._pulse_animation.stop()
+            self._pulse_opacity = 1.0 # Reset opacity when stopping
     
     def set_status(self, status: str, subtitle: str = ""):
         """
         Set status and optional subtitle.
         
         Args:
-            status: One of 'Enabled', 'Disabled', 'Postponed', 'Failed', 'Running'
+            status: One of 'Enabled', 'Disabled', 'Postponed', 'Failed', 'Running', 'Expired', 'Paused', 'Error'
             subtitle: Optional text to show (e.g., '@ 18:30' for Postponed)
         """
         self._status = status
         self._subtitle = subtitle
+        
+        if status == "Running":
+            self._display_text = tr("status_running", "Running")
+            self._bg_color = QColor(0, 120, 215)  # Fluent Blue
+            self.start_pulse()
+        elif status == "Enabled":
+            self._display_text = tr("status_enabled", "Enabled")
+            self._bg_color = QColor(16, 124, 16)  # Success Green
+            self.stop_pulse()
+        elif status == "Disabled":
+            self._display_text = tr("status_disabled", "Disabled")
+            self._bg_color = QColor(100, 100, 100) # Grey
+            self.stop_pulse()
+        elif status == "Expired":
+            self._display_text = tr("status_expired", "Expired")
+            self._bg_color = QColor(180, 100, 0)   # Orange
+            self.stop_pulse()
+        elif status == "Paused":
+            self._display_text = tr("status_paused", "Paused")
+            self._bg_color = QColor(140, 140, 40)  # Yellow-ish
+            self.stop_pulse()
+        elif status == "Error":
+             self._display_text = tr("status_error", "Error")
+             self._bg_color = QColor(200, 0, 0)     # Red
+             self.stop_pulse()
+        elif status == "Postponed": # Original status, not in the provided snippet, but should be handled
+            self._display_text = tr("status_postponed", "Postponed")
+            self._bg_color = QColor(243, 156, 18) # Orange
+            self.stop_pulse()
+        elif status == "Failed": # Original status, not in the provided snippet, but should be handled
+            self._display_text = tr("status_failed", "Failed")
+            self._bg_color = QColor(231, 76, 60) # Red
+            self.stop_pulse()
+        else: # Default for unknown statuses
+            self._display_text = tr("status_unknown", status)
+            self._bg_color = QColor(127, 140, 141) # Gray
+            self.stop_pulse()
         
         # Adjust width based on content
         if subtitle:
             self.setFixedWidth(120)
         else:
             self.setFixedWidth(80)
-        
-        # Only animate for Running status
-        if status == "Running":
-            self._pulse_animation.start()
-        else:
-            self._pulse_animation.stop()
-            self._pulse_opacity = 1.0
         
         self.update()
     
@@ -81,30 +122,30 @@ class StatusBadge(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        # Get colors for status (default to gray if unknown)
-        colors = self.STATUS_COLORS.get(self._status, ('#7F8C8D', '#FFFFFF'))
-        bg_hex, text_hex = colors
-        
-        # Apply pulse opacity for animated statuses
-        bg_color = QColor(bg_hex)
-        if self._status == "Running":
+        # Use localized bg_color
+        bg_color = QColor(self._bg_color)
+        if self.pulseOpacity != 1.0:
             bg_color.setAlphaF(self._pulse_opacity)
-        text_color = QColor(text_hex)
         
         # Draw rounded rectangle
         painter.setBrush(bg_color)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(0, 0, self.width(), self.height(), 12, 12)
         
-        # Draw text
-        painter.setPen(text_color)
+        # Draw Text
+        painter.setPen(Qt.GlobalColor.white)
+        text_rect = self.rect() # Use self.rect() for the bounding rectangle
         font = QFont("Segoe UI", 8, QFont.Weight.Bold)
         painter.setFont(font)
-        
-        # Combine status and subtitle
-        display_text = self._status
-        if self._subtitle:
-            display_text = f"{self._status} {self._subtitle}"
-        
-        painter.drawText(0, 0, self.width(), self.height(), Qt.AlignmentFlag.AlignCenter, display_text)
 
+        if self._subtitle:
+             # Draw main status slightly up
+             painter.drawText(text_rect.adjusted(0, -6, 0, -6), Qt.AlignmentFlag.AlignCenter, self._display_text)
+             # Draw subtitle slightly down and smaller
+             font.setPointSize(7)
+             font.setWeight(QFont.Weight.Normal)
+             painter.setFont(font)
+             painter.setPen(QColor(220, 220, 220))
+             painter.drawText(text_rect.adjusted(0, 8, 0, 8), Qt.AlignmentFlag.AlignCenter, self._subtitle)
+        else:
+             painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self._display_text)

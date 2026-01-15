@@ -55,7 +55,8 @@ class CountdownIndicator(QWidget):
     def _format_time(self, seconds):
         """Format seconds to readable string."""
         if seconds <= 0:
-            return "Starting soon..."
+            from language_manager import get_text
+            return get_text("widgets.starting_soon", "Starting soon...")
         
         td = timedelta(seconds=int(seconds))
         days = td.days

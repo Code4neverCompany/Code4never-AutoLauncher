@@ -86,34 +86,38 @@ class TaskManager:
                 pass
             return False
     
-    def add_task(self, task: Dict) -> bool:
+    def add_task(self, task: Dict) -> Optional[int]:
         """
         Add a new task.
         
         Args:
-            task: Dictionary containing task data with keys:
-                  - name: Task name
-                  - program_path: Path to executable
-                  - schedule_time: Scheduled time (ISO format string)
-                  - enabled: Boolean indicating if task is active
+            task: Dictionary containing task data
                   
         Returns:
-            True if successful, False otherwise
+            Task ID if successful, None otherwise
         """
         try:
             # Add timestamp for task creation
             task['created_at'] = datetime.now().isoformat()
-            task['id'] = len(self.tasks) + 1
+            # Simple ID generation strategy: MAX(id) + 1 or len + 1
+            # Using len + 1 is risky if we delete tasks, but for simple app it's "okay" mostly.
+            # Ideally we should find max ID. 
+            # Let's switch to max ID + 1 for safety.
+            max_id = 0
+            if self.tasks:
+                max_id = max(t.get('id', 0) for t in self.tasks)
+            task['id'] = max_id + 1
             
             self.tasks.append(task)
             success = self.save_tasks()
             
             if success:
-                logger.info(f"Added new task: {task['name']}")
-            return success
+                logger.info(f"Added new task: {task['name']} (ID: {task['id']})")
+                return task['id']
+            return None
         except Exception as e:
             logger.error(f"Error adding task: {e}")
-            return False
+            return None
     
     def update_task(self, task_id: int, updated_task: Dict) -> bool:
         """
