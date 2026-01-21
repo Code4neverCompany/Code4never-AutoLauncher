@@ -72,6 +72,14 @@ class StatusBadge(QWidget):
         self._status = status
         self._subtitle = subtitle
         
+        # Get translator
+        from language_manager import get_language_manager
+        lang_mgr = get_language_manager()
+        
+        # Helper to translate
+        def tr(key, default):
+            return lang_mgr.get_text(f"widgets.{key}", default)
+        
         if status == "Running":
             self._display_text = tr("status_running", "Running")
             self._bg_color = QColor(0, 120, 215)  # Fluent Blue

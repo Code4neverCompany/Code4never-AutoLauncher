@@ -64,7 +64,7 @@ def create_github_release(version, zip_file, installer_file=None):
         "gh", "release", "create", tag,
         *assets,
         "--title", title,
-        "--generate-notes"
+        "--notes-file", "latest_release_notes.md"
     ]
     
     try:
