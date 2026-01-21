@@ -1,8 +1,16 @@
 {
-    "version": "1.8.0",
+    "version": "1.8.1",
     "release_date": "2026-01-21",
-    "description": "Addon System Upgrade v1.8.0 - Modular Architecture & UI Enhancements",
+    "description": "Hotfix v1.8.1 - Resolved Startup Crash",
     "changelog": [
+        {
+            "version": "1.8.1",
+            "date": "2026-01-21",
+            "changes": [
+                "FIX: Startup Crash - Resolved 'AttributeError: FluentIcon.MOON' by updating icon constant",
+                "FIX: Verified Settings UI stability"
+            ]
+        },
         {
             "version": "1.8.0",
             "date": "2026-01-21",

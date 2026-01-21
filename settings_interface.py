@@ -228,7 +228,7 @@ class SettingsInterface(ScrollArea):
         
         # Default Sleep After Setting
         self.sleepDefaultCard = SwitchSettingCard(
-            FluentIcon.MOON,
+            FluentIcon.QUIET_HOURS,
             "Sleep After Task (Default)",
             "Automatically check 'Sleep After' for new tasks",
             configItem=None,
