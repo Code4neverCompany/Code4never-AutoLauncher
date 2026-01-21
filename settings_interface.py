@@ -41,6 +41,27 @@ from startup_manager import StartupManager
 logger = get_logger(__name__)
 
 
+class ManualRangeConfigItem(QObject):
+    """
+    Helper class to mimic RangeConfigItem for RangeSettingCard without qconfig dependency.
+    """
+    valueChanged = pyqtSignal(int)
+    
+    def __init__(self, value, min_val, max_val):
+        super().__init__()
+        self._value = value
+        self.range = [min_val, max_val]
+        
+    @property
+    def value(self):
+        return self._value
+        
+    @value.setter
+    def value(self, v):
+        self._value = v
+        self.valueChanged.emit(v)
+
+
 class SettingsInterface(ScrollArea):
     """
     Settings interface for application preferences.
@@ -251,13 +272,18 @@ class SettingsInterface(ScrollArea):
         self.powerGroup.addSettingCard(self.smartSleepCard)
         
         # Smart Sleep Threshold
+        # Smart Sleep Threshold
+        self.thresholdConfig = ManualRangeConfigItem(
+            self.settings_manager.get('smart_sleep_threshold', 60) // 60, 1, 30
+        )
         self.thresholdCard = RangeSettingCard(
-            self.settings_manager.get('smart_sleep_threshold', 60) // 60, # Convert to minutes for UI
+            self.thresholdConfig,
+            FluentIcon.QUIET_HOURS,
             "Idle Threshold (minutes)",
             "How long the computer must be idle before allowing sleep",
             parent=self.powerGroup
         )
-        self.thresholdCard.setRange(1, 30)
+        # self.thresholdCard.setRange(1, 30) # Handled by config item
         self.thresholdCard.setValue(self.settings_manager.get('smart_sleep_threshold', 60) // 60)
         self.thresholdCard.valueChanged.connect(self._on_threshold_changed)
         self.powerGroup.addSettingCard(self.thresholdCard)

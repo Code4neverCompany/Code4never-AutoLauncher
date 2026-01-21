@@ -1,8 +1,16 @@
 {
-    "version": "1.8.1",
+    "version": "1.8.2",
     "release_date": "2026-01-21",
-    "description": "Hotfix v1.8.1 - Resolved Startup Crash",
+    "description": "Hotfix v1.8.2 - Range Setting Crash",
     "changelog": [
+        {
+            "version": "1.8.2",
+            "date": "2026-01-21",
+            "changes": [
+                "FIX: Startup Crash - Resolved 'AttributeError: int object has no attribute range' in Settings",
+                "FIX: Implemented proper ConfigItem compatibility for RangeSettingCard"
+            ]
+        },
         {
             "version": "1.8.1",
             "date": "2026-01-21",
