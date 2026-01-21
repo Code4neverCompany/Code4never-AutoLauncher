@@ -16,321 +16,320 @@
             ]
         },
         {
-            {
-                "version": "1.7.1",
-                "date": "2026-01-16",
-                "changes": [
-                    "FIX: UI Status Refresh - Task icons now correctly reflect real-time status",
-                    "FIX: Startup Crash (Permission Error) - Logs and Data strictly stored in %APPDATA%",
-                    "FIX: Build System - Resolved critical PyQt6 exclusion issue",
-                    "FIX: Localization - Enhanced German/English translation consistency"
-                ]
-            },
-            {
-                "version": "1.7.0",
-                "date": "2026-01-15",
-                "changes": [
-                    "ARCHITECTURE: Full MVC Refactoring - Split monolithic code into Controller/View for superior stability and maintenance",
-                    "BACKEND: Atomic Writes - Implemented crash-safe saving for tasks and settings to prevent data corruption",
-                    "BACKEND: Zombie Process Cleanup - New background collector automatically detects and cleans up finished processes",
-                    "BACKEND: Spam Prevention - Intelligent notification throttling prevents alert fatigue during updates",
-                    "REFACTOR: Config Externalization - Moved hardcoded blocklists to blocklist.json for easier user modification",
-                    "PERFORMANCE: Input Monitor - Optimized hooks to prevent system micro-stutters during high-load gaming",
-                    "FIX: Input Freeze - Resolved critical bug where keyboard/mouse would lock up on startup"
-                ]
-            },
-            {
-                "version": "1.6.0",
-                "date": "2025-12-18",
-                "changes": [
-                    "FEATURE: Native Windows OCR - Replaced image matching with robust text detection (Windows.Media.Ocr)",
-                    "FEATURE: Recursive Process Tracking - Tasks now stay active even when launchers spawn children and exit",
-                    "FIX: Solved 'Black Screen' issue strategies for DirectX/Exclusive Fullscreen games",
-                    "FIX: Robust Stuck Detection - Monitors entire process tree for 'Update' or 'Error' dialogs"
-                ]
-            },
-            {
-                "version": "1.5.5",
-                "date": "2025-12-18",
-                "changes": [
-                    "PERFORMANCE: Optimized StuckDetector using Win32 fast-pass filtering to identify candidate windows before engaging deep UIA inspection",
-                    "PERFORMANCE: Added safety limits (50 descendants) and HWND-based connection to prevent system lag during broad searches",
-                    "FEATURE: Increased Confirmation Dialog check frequency from 10s to 4s for near-instant popup responses",
-                    "FIX: Prioritized search for 'Notice' and 'Launcher' windows during global clicks"
-                ]
-            },
-            {
-                "version": "1.5.4",
-                "date": "2025-12-18",
-                "changes": [
-                    "FEATURE: Broad Update Detection - StuckDetector now performs a global window search during the 5min monitor window, catching independent launcher popups",
-                    "FEATURE: Faster Detection - Increased polling frequency from 5s to 2s for more responsive auto-dismissal",
-                    "FEATURE: Keyword Expansion - Added support for 'Notice' and 'Patching progress' dialogs commonly found in modern games like Wuthering Waves",
-                    "FIX: Comtypes Reliability - Implemented writable cache fix to resolve pywinauto/ImportError issues in bundled environments",
-                    "FIX: Auto-Click Improvements - Refined button matching for better reliability with custom launcher dialog titles"
-                ]
-            },
-            {
-                "version": "1.5.3a",
-                "date": "2025-12-18",
-                "changes": [
-                    "FIX: Update Manager - Corrected repository target link to Code4never-AutoLauncher",
-                    "FIX: API Communication - Added required headers to resolve 'Update check failed' (403) errors",
-                    "FIX: About UI - Updated hardcoded GitHub links to the official repository"
-                ]
-            },
-            {
-                "version": "1.5.3",
-                "date": "2025-12-18",
-                "changes": [
-                    "FIX: Aggressive Display Wake - Now simulates multiple keys (Enter, Space) to reliably wake monitors",
-                    "FIX: Scheduler Reliability - Added automatic re-sync of all jobs on system resume to prevent skipped tasks",
-                    "FIX: Update Detection - Correctly bundled pywinauto submodules in production executable"
-                ]
-            },
-            {
-                "version": "1.5.2",
-                "date": "2025-12-16",
-                "changes": [
-                    "FIX: Simulated Enter Key Press - Forces monitors to wake by simulating keyboard input",
-                    "FIX: ES_DISPLAY_REQUIRED alone was insufficient on some systems - now combines with simulated input"
-                ]
-            },
-            {
-                "version": "1.5.0",
-                "date": "2025-12-13",
-                "changes": [
-                    "FEATURE: Update Detection System - Auto-detects game update dialogs (Patching complete, Restart required) and clicks confirmation buttons",
-                    "FEATURE: Task Restart After Update - Automatically re-runs task 30 seconds after update dialog dismissed",
-                    "FEATURE: Update Detector UI Indicator - Blinking cyan badge in toolbar shows when monitoring is active (5 min after task launch)",
-                    "FIX: Wake-Up Failure After 24+ Hours Sleep - System now reliably wakes for tasks after extended sleep periods",
-                    "FIX: Wake timer now refreshes after each task execution, on power resume, every 4 hours, and after missed jobs",
-                    "FIX: Missed tasks are now rescheduled to run 2 minutes later with RECOVERY_SCHEDULED log event",
-                    "NEW: Fresh Beta icon with modern design"
-                ]
-            },
-            {
-                "version": "1.4.2",
-                "date": "2025-12-10",
-                "changes": [
-                    "FIX: False 'User Active' Detection - Idle check now uses REAL input monitor to filter out simulated input from games/automation",
-                    "FIX: Removed hardcoded 'antigravity.exe' from default blocklist - users can add it manually if needed",
-                    "NOTE: Tasks will no longer be incorrectly postponed due to background games simulating mouse/keyboard input"
-                ]
-            },
-            {
-                "version": "1.4.1",
-                "date": "2025-12-10",
-                "changes": [
-                    "FIX: Dark Mode White UI Bug - FINALLY RESOLVED! Root cause identified as Windows 11 Mica effect failing unexpectedly",
-                    "FIX: Disabled Mica transparency effect to ensure solid, consistent background colors",
-                    "NOTE: Background now uses reliable solid colors (#202020 dark, #F0F4F9 light) instead of Windows-managed transparency"
-                ]
-            },
-            {
-                "version": "1.4.0",
-                "date": "2025-12-10",
-                "changes": [
-                    "FEATURE: Configurable Program Blocklist - Add programs that postpone task execution when running",
-                    "FEATURE: Scan for Programs - Auto-detect 120+ installed games, IDEs, and productivity apps",
-                    "FEATURE: Drive Selection - Choose which drives to scan for installed programs",
-                    "FEATURE: Progress Bar - Real-time progress showing scan percentage and current program",
-                    "FEATURE: Updatable Program List - Download latest programs database from GitHub without app update",
-                    "FEATURE: Smart Sleep Real Input Detection - Ignores simulated keyboard/mouse from automation (AutoHotkey, macros)",
-                    "FEATURE: 60-second monitoring window - Watches for genuine human input before entering sleep mode",
-                    "NEW: known_programs.json - Separate updatable file with 120+ games/IDEs/productivity apps",
-                    "NEW: input_monitor.py - Low-level Windows hooks to detect INJECTED flag on input events",
-                    "UX: File browser for manually adding executables to blocklist",
-                    "UX: Categorized scan results with emojis (\ud83c\udfae Games, \ud83d\udcbb IDEs, \ud83d\udcca Productivity)"
-                ]
-            },
-            {
-                "version": "1.3.3",
-                "date": "2025-12-09",
-                "changes": [
-                    "FEATURE: Smart AFK Sleep - 'Sleep after completion' now activates if user was AFK (no input) during the entire task, even if system wasn't woken by the task"
-                ]
-            },
-            {
-                "version": "1.3.2",
-                "date": "2025-12-09",
-                "changes": [
-                    "FIX: Log Dialog crash - Resolved 'Could not open execution log' error caused by incorrect QSize import"
-                ]
-            },
-            {
-                "version": "1.3.1",
-                "date": "2025-12-09",
-                "changes": [
-                    "FIX: Dark Mode White UI Bug - Implemented auto-recovery timer (3s) to restore dark theme when corrupted",
-                    "NOTE: Root cause investigation pending - qfluentwidgets dark mode styling issue requires deeper analysis"
-                ]
-            },
-            {
-                "version": "1.3.0",
-                "date": "2025-12-09",
-                "changes": [
-                    "FEATURE: Smart Auto Execution Mode - Intelligently postpones tasks when system is busy (CPU >50%, RAM >80%, user active, games/IDEs running)",
-                    "FEATURE: Dashboard Emoji Indicators - Visual emojis for Schedule (\ud83d\udcc5 Once, \ud83d\udd04 Daily, \ud83d\udcc6 Weekly), Countdown (\u23f1\ufe0f Normal, \u23f3 Postponed, \u23f8\ufe0f Paused, \u274c Expired)",
-                    "FEATURE: Color-coded Status Badges - Enabled (green), Disabled (blue), Postponed (orange), Running (purple pulse), Failed (red), Expired (gray)",
-                    "FEATURE: Enhanced Log Dialog - Shows blocker process icons for postponed tasks, EXECUTED events logged with reasons",
-                    "FEATURE: Postpone Timer - Countdown shows remaining time until retry with \u23f3 indicator",
-                    "FIX: Running status now clears when task finishes",
-                    "FIX: Settings sync - Scheduler now reloads settings before checking execution mode",
-                    "UX: Status badges centered in table cells",
-                    "UX: Wider countdown/schedule columns for emoji text"
-                ]
-            },
-            {
-                "version": "1.2.3",
-                "date": "2025-12-04",
-                "changes": [
-                    "FIX: Resolved crashes when adding/editing tasks (Qt.Horizontal enum)",
-                    "FIX: Resolved crash on application exit (QSystemTrayIcon enum)"
-                ]
-            },
-            {
-                "version": "1.2.2",
-                "date": "2025-12-04",
-                "changes": [
-                    "FIX: Resolved application crashes caused by missing translation keys (InfoBar NoneType error)",
-                    "FIX: Hardened language manager against null values"
-                ]
-            },
-            {
-                "version": "1.2.1",
-                "date": "2025-12-04",
-                "changes": [
-                    "FIX: Migrated to PyQt6 to resolve DLL load failures",
-                    "FIX: Updated all UI components for PyQt6 compatibility"
-                ]
-            },
-            {
-                "version": "1.2.0",
-                "date": "2025-12-04",
-                "changes": [
-                    "FEATURE: Visual Stuck Detection - Detects error dialogs and 'Update Required' windows using UI Automation",
-                    "FEATURE: Smart Sleep - Intelligent sleep management based on task completion",
-                    "IMPROVEMENT: Replaced unreliable OCR with robust pywinauto integration",
-                    "FIX: Enhanced task monitoring reliability"
-                ]
-            },
-            {
-                "version": "1.1.0",
-                "date": "2025-11-26",
-                "changes": [
-                    "BETA RELEASE: Official Beta Launch!",
-                    "FEATURE: Wake from Sleep - System wakes up automatically for scheduled tasks",
-                    "FEATURE: Pre-wake Process - Configurable pre-wake duration (1-15 mins) to ensure system is ready",
-                    "FEATURE: Smart Process Tracking - Tracks actual game/app processes, including shortcuts (.lnk) and launchers",
-                    "FEATURE: Sleep after Completion - System sleeps only when the actual task finishes",
-                    "UX: Double-click task row to edit",
-                    "UX: Real-time clock display in Task Dialog"
-                ]
-            },
-            {
-                "version": "1.0.13l",
-                "date": "2025-11-26",
-                "changes": [
-                    "TEST: Target release for verifying auto-update from v1.0.13k",
-                    "INFO: If you are seeing this, the auto-update worked!"
-                ]
-            },
-            {
-                "version": "1.0.13k",
-                "date": "2025-11-26",
-                "changes": [
-                    "FIX: Resolved NameError regression in update manager",
-                    "FIX: Restored missing PowerShell download logic",
-                    "TEST: Final verification release for auto-update flow"
-                ]
-            },
-            {
-                "version": "1.0.13j",
-                "date": "2025-11-26",
-                "changes": [
-                    "TEST: Target release for verifying auto-update from v1.0.13i",
-                    "INFO: If you are seeing this, the auto-update worked!"
-                ]
-            },
-            {
-                "version": "1.0.13i",
-                "date": "2025-11-26",
-                "changes": [
-                    "FIX: Implemented robust PowerShell script-based download mechanism",
-                    "FIX: Resolved syntax error in update manager",
-                    "TEST: Final verification release for auto-update flow"
-                ]
-            },
-            {
-                "version": "1.0.13h",
-                "date": "2025-11-26",
-                "changes": [
-                    "TEST: Final verification release for PowerShell update engine",
-                    "FIX: Confirmed robust download capability via Invoke-WebRequest"
-                ]
-            },
-            {
-                "version": "1.0.13g",
-                "date": "2025-11-26",
-                "changes": [
-                    "FIX: Replaced Python downloader with robust Windows PowerShell downloader",
-                    "FIX: Solves persistent 0-byte download issues by using OS native networking",
-                    "FIX: Improved handling of SSL, redirects, and proxies"
-                ]
-            },
-            {
-                "version": "1.0.13f",
-                "date": "2025-11-26",
-                "changes": [
-                    "TEST: Verification release to confirm auto-update functionality",
-                    "FIX: Confirmed fix for 0-byte downloads",
-                    "FIX: Confirmed fix for startup crashes"
-                ]
-            },
-            {
-                "version": "1.0.13e",
-                "date": "2025-11-26",
-                "changes": [
-                    "FIX: Resolved application crash on startup due to missing UI method",
-                    "FIX: File logging now enabled in production builds (was DEBUG-only)",
-                    "FIX: Logs directory button now points to correct location"
-                ]
-            },
-            {
-                "version": "1.0.13c",
-                "date": "2025-11-26",
-                "changes": [
-                    "FIX: Application now properly loads saved language preference on startup",
-                    "FIX: Eliminated mixed language text on first launch"
-                ]
-            },
-            {
-                "version": "1.0.13b",
-                "date": "2025-11-26",
-                "changes": [
-                    "FIX: Auto-update downloads now properly follow GitHub CDN redirects",
-                    "FIX: Added comprehensive download logging with progress tracking",
-                    "FIX: Enhanced error detection for 0-byte file downloads",
-                    "FIX: Added ZIP file validation before installation"
-                ]
-            },
-            {
-                "version": "1.0.13a",
-                "date": "2025-11-25",
-                "changes": [
-                    "FIX: Corrected translation JSON structure - separated 'about' section from 'dialog'",
-                    "FIX: Fixed translation key prefixes in task_card.py"
-                ]
-            },
-            {
-                "version": "1.0.13",
-                "date": "2025-11-25",
-                "changes": [
-                    "FEATURE: Bilingual Support - English and German with dynamic language switching",
-                    "FEATURE: Comprehensive translations for all UI elements, dialogs, and messages",
-                    "UPDATE: Refactored UI components to support dynamic text reloading"
-                ]
-            }
-        ]
-    }
+            "version": "1.7.1",
+            "date": "2026-01-16",
+            "changes": [
+                "FIX: UI Status Refresh - Task icons now correctly reflect real-time status",
+                "FIX: Startup Crash (Permission Error) - Logs and Data strictly stored in %APPDATA%",
+                "FIX: Build System - Resolved critical PyQt6 exclusion issue",
+                "FIX: Localization - Enhanced German/English translation consistency"
+            ]
+        },
+        {
+            "version": "1.7.0",
+            "date": "2026-01-15",
+            "changes": [
+                "ARCHITECTURE: Full MVC Refactoring - Split monolithic code into Controller/View for superior stability and maintenance",
+                "BACKEND: Atomic Writes - Implemented crash-safe saving for tasks and settings to prevent data corruption",
+                "BACKEND: Zombie Process Cleanup - New background collector automatically detects and cleans up finished processes",
+                "BACKEND: Spam Prevention - Intelligent notification throttling prevents alert fatigue during updates",
+                "REFACTOR: Config Externalization - Moved hardcoded blocklists to blocklist.json for easier user modification",
+                "PERFORMANCE: Input Monitor - Optimized hooks to prevent system micro-stutters during high-load gaming",
+                "FIX: Input Freeze - Resolved critical bug where keyboard/mouse would lock up on startup"
+            ]
+        },
+        {
+            "version": "1.6.0",
+            "date": "2025-12-18",
+            "changes": [
+                "FEATURE: Native Windows OCR - Replaced image matching with robust text detection (Windows.Media.Ocr)",
+                "FEATURE: Recursive Process Tracking - Tasks now stay active even when launchers spawn children and exit",
+                "FIX: Solved 'Black Screen' issue strategies for DirectX/Exclusive Fullscreen games",
+                "FIX: Robust Stuck Detection - Monitors entire process tree for 'Update' or 'Error' dialogs"
+            ]
+        },
+        {
+            "version": "1.5.5",
+            "date": "2025-12-18",
+            "changes": [
+                "PERFORMANCE: Optimized StuckDetector using Win32 fast-pass filtering to identify candidate windows before engaging deep UIA inspection",
+                "PERFORMANCE: Added safety limits (50 descendants) and HWND-based connection to prevent system lag during broad searches",
+                "FEATURE: Increased Confirmation Dialog check frequency from 10s to 4s for near-instant popup responses",
+                "FIX: Prioritized search for 'Notice' and 'Launcher' windows during global clicks"
+            ]
+        },
+        {
+            "version": "1.5.4",
+            "date": "2025-12-18",
+            "changes": [
+                "FEATURE: Broad Update Detection - StuckDetector now performs a global window search during the 5min monitor window, catching independent launcher popups",
+                "FEATURE: Faster Detection - Increased polling frequency from 5s to 2s for more responsive auto-dismissal",
+                "FEATURE: Keyword Expansion - Added support for 'Notice' and 'Patching progress' dialogs commonly found in modern games like Wuthering Waves",
+                "FIX: Comtypes Reliability - Implemented writable cache fix to resolve pywinauto/ImportError issues in bundled environments",
+                "FIX: Auto-Click Improvements - Refined button matching for better reliability with custom launcher dialog titles"
+            ]
+        },
+        {
+            "version": "1.5.3a",
+            "date": "2025-12-18",
+            "changes": [
+                "FIX: Update Manager - Corrected repository target link to Code4never-AutoLauncher",
+                "FIX: API Communication - Added required headers to resolve 'Update check failed' (403) errors",
+                "FIX: About UI - Updated hardcoded GitHub links to the official repository"
+            ]
+        },
+        {
+            "version": "1.5.3",
+            "date": "2025-12-18",
+            "changes": [
+                "FIX: Aggressive Display Wake - Now simulates multiple keys (Enter, Space) to reliably wake monitors",
+                "FIX: Scheduler Reliability - Added automatic re-sync of all jobs on system resume to prevent skipped tasks",
+                "FIX: Update Detection - Correctly bundled pywinauto submodules in production executable"
+            ]
+        },
+        {
+            "version": "1.5.2",
+            "date": "2025-12-16",
+            "changes": [
+                "FIX: Simulated Enter Key Press - Forces monitors to wake by simulating keyboard input",
+                "FIX: ES_DISPLAY_REQUIRED alone was insufficient on some systems - now combines with simulated input"
+            ]
+        },
+        {
+            "version": "1.5.0",
+            "date": "2025-12-13",
+            "changes": [
+                "FEATURE: Update Detection System - Auto-detects game update dialogs (Patching complete, Restart required) and clicks confirmation buttons",
+                "FEATURE: Task Restart After Update - Automatically re-runs task 30 seconds after update dialog dismissed",
+                "FEATURE: Update Detector UI Indicator - Blinking cyan badge in toolbar shows when monitoring is active (5 min after task launch)",
+                "FIX: Wake-Up Failure After 24+ Hours Sleep - System now reliably wakes for tasks after extended sleep periods",
+                "FIX: Wake timer now refreshes after each task execution, on power resume, every 4 hours, and after missed jobs",
+                "FIX: Missed tasks are now rescheduled to run 2 minutes later with RECOVERY_SCHEDULED log event",
+                "NEW: Fresh Beta icon with modern design"
+            ]
+        },
+        {
+            "version": "1.4.2",
+            "date": "2025-12-10",
+            "changes": [
+                "FIX: False 'User Active' Detection - Idle check now uses REAL input monitor to filter out simulated input from games/automation",
+                "FIX: Removed hardcoded 'antigravity.exe' from default blocklist - users can add it manually if needed",
+                "NOTE: Tasks will no longer be incorrectly postponed due to background games simulating mouse/keyboard input"
+            ]
+        },
+        {
+            "version": "1.4.1",
+            "date": "2025-12-10",
+            "changes": [
+                "FIX: Dark Mode White UI Bug - FINALLY RESOLVED! Root cause identified as Windows 11 Mica effect failing unexpectedly",
+                "FIX: Disabled Mica transparency effect to ensure solid, consistent background colors",
+                "NOTE: Background now uses reliable solid colors (#202020 dark, #F0F4F9 light) instead of Windows-managed transparency"
+            ]
+        },
+        {
+            "version": "1.4.0",
+            "date": "2025-12-10",
+            "changes": [
+                "FEATURE: Configurable Program Blocklist - Add programs that postpone task execution when running",
+                "FEATURE: Scan for Programs - Auto-detect 120+ installed games, IDEs, and productivity apps",
+                "FEATURE: Drive Selection - Choose which drives to scan for installed programs",
+                "FEATURE: Progress Bar - Real-time progress showing scan percentage and current program",
+                "FEATURE: Updatable Program List - Download latest programs database from GitHub without app update",
+                "FEATURE: Smart Sleep Real Input Detection - Ignores simulated keyboard/mouse from automation (AutoHotkey, macros)",
+                "FEATURE: 60-second monitoring window - Watches for genuine human input before entering sleep mode",
+                "NEW: known_programs.json - Separate updatable file with 120+ games/IDEs/productivity apps",
+                "NEW: input_monitor.py - Low-level Windows hooks to detect INJECTED flag on input events",
+                "UX: File browser for manually adding executables to blocklist",
+                "UX: Categorized scan results with emojis (\ud83c\udfae Games, \ud83d\udcbb IDEs, \ud83d\udcca Productivity)"
+            ]
+        },
+        {
+            "version": "1.3.3",
+            "date": "2025-12-09",
+            "changes": [
+                "FEATURE: Smart AFK Sleep - 'Sleep after completion' now activates if user was AFK (no input) during the entire task, even if system wasn't woken by the task"
+            ]
+        },
+        {
+            "version": "1.3.2",
+            "date": "2025-12-09",
+            "changes": [
+                "FIX: Log Dialog crash - Resolved 'Could not open execution log' error caused by incorrect QSize import"
+            ]
+        },
+        {
+            "version": "1.3.1",
+            "date": "2025-12-09",
+            "changes": [
+                "FIX: Dark Mode White UI Bug - Implemented auto-recovery timer (3s) to restore dark theme when corrupted",
+                "NOTE: Root cause investigation pending - qfluentwidgets dark mode styling issue requires deeper analysis"
+            ]
+        },
+        {
+            "version": "1.3.0",
+            "date": "2025-12-09",
+            "changes": [
+                "FEATURE: Smart Auto Execution Mode - Intelligently postpones tasks when system is busy (CPU >50%, RAM >80%, user active, games/IDEs running)",
+                "FEATURE: Dashboard Emoji Indicators - Visual emojis for Schedule (\ud83d\udcc5 Once, \ud83d\udd04 Daily, \ud83d\udcc6 Weekly), Countdown (\u23f1\ufe0f Normal, \u23f3 Postponed, \u23f8\ufe0f Paused, \u274c Expired)",
+                "FEATURE: Color-coded Status Badges - Enabled (green), Disabled (blue), Postponed (orange), Running (purple pulse), Failed (red), Expired (gray)",
+                "FEATURE: Enhanced Log Dialog - Shows blocker process icons for postponed tasks, EXECUTED events logged with reasons",
+                "FEATURE: Postpone Timer - Countdown shows remaining time until retry with \u23f3 indicator",
+                "FIX: Running status now clears when task finishes",
+                "FIX: Settings sync - Scheduler now reloads settings before checking execution mode",
+                "UX: Status badges centered in table cells",
+                "UX: Wider countdown/schedule columns for emoji text"
+            ]
+        },
+        {
+            "version": "1.2.3",
+            "date": "2025-12-04",
+            "changes": [
+                "FIX: Resolved crashes when adding/editing tasks (Qt.Horizontal enum)",
+                "FIX: Resolved crash on application exit (QSystemTrayIcon enum)"
+            ]
+        },
+        {
+            "version": "1.2.2",
+            "date": "2025-12-04",
+            "changes": [
+                "FIX: Resolved application crashes caused by missing translation keys (InfoBar NoneType error)",
+                "FIX: Hardened language manager against null values"
+            ]
+        },
+        {
+            "version": "1.2.1",
+            "date": "2025-12-04",
+            "changes": [
+                "FIX: Migrated to PyQt6 to resolve DLL load failures",
+                "FIX: Updated all UI components for PyQt6 compatibility"
+            ]
+        },
+        {
+            "version": "1.2.0",
+            "date": "2025-12-04",
+            "changes": [
+                "FEATURE: Visual Stuck Detection - Detects error dialogs and 'Update Required' windows using UI Automation",
+                "FEATURE: Smart Sleep - Intelligent sleep management based on task completion",
+                "IMPROVEMENT: Replaced unreliable OCR with robust pywinauto integration",
+                "FIX: Enhanced task monitoring reliability"
+            ]
+        },
+        {
+            "version": "1.1.0",
+            "date": "2025-11-26",
+            "changes": [
+                "BETA RELEASE: Official Beta Launch!",
+                "FEATURE: Wake from Sleep - System wakes up automatically for scheduled tasks",
+                "FEATURE: Pre-wake Process - Configurable pre-wake duration (1-15 mins) to ensure system is ready",
+                "FEATURE: Smart Process Tracking - Tracks actual game/app processes, including shortcuts (.lnk) and launchers",
+                "FEATURE: Sleep after Completion - System sleeps only when the actual task finishes",
+                "UX: Double-click task row to edit",
+                "UX: Real-time clock display in Task Dialog"
+            ]
+        },
+        {
+            "version": "1.0.13l",
+            "date": "2025-11-26",
+            "changes": [
+                "TEST: Target release for verifying auto-update from v1.0.13k",
+                "INFO: If you are seeing this, the auto-update worked!"
+            ]
+        },
+        {
+            "version": "1.0.13k",
+            "date": "2025-11-26",
+            "changes": [
+                "FIX: Resolved NameError regression in update manager",
+                "FIX: Restored missing PowerShell download logic",
+                "TEST: Final verification release for auto-update flow"
+            ]
+        },
+        {
+            "version": "1.0.13j",
+            "date": "2025-11-26",
+            "changes": [
+                "TEST: Target release for verifying auto-update from v1.0.13i",
+                "INFO: If you are seeing this, the auto-update worked!"
+            ]
+        },
+        {
+            "version": "1.0.13i",
+            "date": "2025-11-26",
+            "changes": [
+                "FIX: Implemented robust PowerShell script-based download mechanism",
+                "FIX: Resolved syntax error in update manager",
+                "TEST: Final verification release for auto-update flow"
+            ]
+        },
+        {
+            "version": "1.0.13h",
+            "date": "2025-11-26",
+            "changes": [
+                "TEST: Final verification release for PowerShell update engine",
+                "FIX: Confirmed robust download capability via Invoke-WebRequest"
+            ]
+        },
+        {
+            "version": "1.0.13g",
+            "date": "2025-11-26",
+            "changes": [
+                "FIX: Replaced Python downloader with robust Windows PowerShell downloader",
+                "FIX: Solves persistent 0-byte download issues by using OS native networking",
+                "FIX: Improved handling of SSL, redirects, and proxies"
+            ]
+        },
+        {
+            "version": "1.0.13f",
+            "date": "2025-11-26",
+            "changes": [
+                "TEST: Verification release to confirm auto-update functionality",
+                "FIX: Confirmed fix for 0-byte downloads",
+                "FIX: Confirmed fix for startup crashes"
+            ]
+        },
+        {
+            "version": "1.0.13e",
+            "date": "2025-11-26",
+            "changes": [
+                "FIX: Resolved application crash on startup due to missing UI method",
+                "FIX: File logging now enabled in production builds (was DEBUG-only)",
+                "FIX: Logs directory button now points to correct location"
+            ]
+        },
+        {
+            "version": "1.0.13c",
+            "date": "2025-11-26",
+            "changes": [
+                "FIX: Application now properly loads saved language preference on startup",
+                "FIX: Eliminated mixed language text on first launch"
+            ]
+        },
+        {
+            "version": "1.0.13b",
+            "date": "2025-11-26",
+            "changes": [
+                "FIX: Auto-update downloads now properly follow GitHub CDN redirects",
+                "FIX: Added comprehensive download logging with progress tracking",
+                "FIX: Enhanced error detection for 0-byte file downloads",
+                "FIX: Added ZIP file validation before installation"
+            ]
+        },
+        {
+            "version": "1.0.13a",
+            "date": "2025-11-25",
+            "changes": [
+                "FIX: Corrected translation JSON structure - separated 'about' section from 'dialog'",
+                "FIX: Fixed translation key prefixes in task_card.py"
+            ]
+        },
+        {
+            "version": "1.0.13",
+            "date": "2025-11-25",
+            "changes": [
+                "FEATURE: Bilingual Support - English and German with dynamic language switching",
+                "FEATURE: Comprehensive translations for all UI elements, dialogs, and messages",
+                "UPDATE: Refactored UI components to support dynamic text reloading"
+            ]
+        }
+    ]
+}
