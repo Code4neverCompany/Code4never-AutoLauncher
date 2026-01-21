@@ -15,6 +15,8 @@ from language_manager import get_language_manager
 from logger import get_logger
 from config import TIMER_UPDATE_INTERVAL
 
+from addon_manager import AddonManager
+
 logger = get_logger(__name__)
 
 class MainController(QObject):
@@ -57,6 +59,8 @@ class MainController(QObject):
         self.task_manager = TaskManager()
         self.scheduler = TaskScheduler()
         self.update_manager = UpdateManager()
+        self.addon_manager = AddonManager(self)  # [NEW] Addon Manager with Context
+        self.scheduler.addon_manager = self.addon_manager # Inject manager into scheduler
         
         # 3. Setup Internal State
         self.pending_update_info = None
@@ -67,6 +71,9 @@ class MainController(QObject):
         
         # 5. Connect Internal Signals
         self._connect_scheduler_signals()
+        
+        # 6. Discover Addons
+        self.addon_manager.discover_addons()
         
         logger.info("MainController initialized successfully")
 
@@ -83,13 +90,14 @@ class MainController(QObject):
         self.scheduler.task_finished.connect(self.task_finished.emit)
         self.scheduler.task_postponed.connect(self.task_postponed.emit)
         self.scheduler.ask_user_permission.connect(self.ask_user_permission.emit)
-        self.scheduler.update_detector_started.connect(self.update_detector_started.emit)
-        self.scheduler.update_detector_stopped.connect(self.update_detector_stopped.emit)
 
     def start(self):
         """Start the application logic (load tasks, etc.)."""
         # Load tasks into scheduler
         self._load_scheduled_tasks()
+        
+        # Notify Addons
+        self.addon_manager.notify_app_start()
         
         # Start startup tasks or logic here if needed
         pass
@@ -108,7 +116,9 @@ class MainController(QObject):
     def shutdown(self):
         """Gracefully shutdown the application/controller."""
         logger.info("Shutting down MainController...")
+        self.addon_manager.notify_app_shutdown()
         self.scheduler.shutdown()
+
         
     # --- Task Management Methods ---
     
@@ -136,11 +146,12 @@ class MainController(QObject):
             self.task_deleted.emit(task_id)
         return success
         
-    def execute_task_now(self, task_id: int):
+    def execute_task_now(self, task_id: int) -> bool:
         """Force execute a task immediately."""
         task = self.task_manager.get_task(task_id)
         if task:
-            self.scheduler.execute_immediately(task)
+            return self.scheduler.execute_immediately(task)
+        return False
 
     # --- Update Logic Methods ---
     

@@ -106,10 +106,11 @@ def resolve_shortcut(lnk_path: str) -> str:
         lnk_path: Path to the .lnk file
         
     Returns:
-        Path to the target executable, or the original path if not a shortcut
+        Tuple of (target_executable_path, arguments_string)
+        If not a shortcut, returns (original_path, "")
     """
     if not lnk_path.endswith('.lnk'):
-        return lnk_path
+        return lnk_path, ""
     
     try:
         import pythoncom
@@ -122,8 +123,9 @@ def resolve_shortcut(lnk_path: str) -> str:
             shell = win32com.client.Dispatch("WScript.Shell")
             shortcut = shell.CreateShortCut(lnk_path)
             target_path = shortcut.Targetpath
-            logger.info(f"Resolved shortcut: {lnk_path} -> {target_path}")
-            return target_path
+            arguments = shortcut.Arguments
+            logger.info(f"Resolved shortcut: {lnk_path} -> {target_path} (Args: {arguments})")
+            return target_path, arguments
         finally:
             # Uninitialize COM
             pythoncom.CoUninitialize()
@@ -134,7 +136,7 @@ def resolve_shortcut(lnk_path: str) -> str:
         # E.g., "Raid Shadow Legends.lnk" -> "Raid Shadow Legends.exe"
         lnk_name = Path(lnk_path).stem
         logger.info(f"Fallback: assuming executable name is '{lnk_name}.exe'")
-        return lnk_name + ".exe"
+        return lnk_name + ".exe", ""
 
 
 def get_process_name_from_path(program_path: str) -> str:
@@ -149,7 +151,7 @@ def get_process_name_from_path(program_path: str) -> str:
         Process name (e.g., "notepad.exe")
     """
     # Resolve shortcut if needed
-    resolved_path = resolve_shortcut(program_path)
+    resolved_path, _ = resolve_shortcut(program_path)
     
     # Get the executable name
     path_obj = Path(resolved_path)

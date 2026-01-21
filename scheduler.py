@@ -13,7 +13,6 @@ from typing import Dict, List, Optional
 from pathlib import Path
 import threading
 from power_manager import PowerManager
-from stuck_detector import StuckDetector
 from config import STUCK_DETECTION_KEYWORDS, STUCK_DETECTION_OCR_KEYWORDS, CONFIRMATION_DIALOG_KEYWORDS, CONFIRMATION_BUTTON_LABELS
 from input_monitor import get_input_monitor, start_input_monitor
 
@@ -23,9 +22,11 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
+import os
 
 from logger import get_logger
 from task_manager import SettingsManager
+from process_tracker import resolve_shortcut, get_spawned_processes
 
 logger = get_logger(__name__)
 
@@ -48,8 +49,6 @@ class TaskScheduler(QObject):
     task_finished = pyqtSignal(int)      # task_id
     ask_user_permission = pyqtSignal(dict) # task_data
     task_postponed = pyqtSignal(int, str) # task_id, new_time_str
-    update_detector_started = pyqtSignal(int, str)  # task_id, task_name
-    update_detector_stopped = pyqtSignal(int)       # task_id
     
     def __init__(self):
         """
@@ -76,7 +75,7 @@ class TaskScheduler(QObject):
         
         # Initialize Power Manager
         self.power_manager = PowerManager()
-        self.stuck_detector = StuckDetector()
+        self.addon_manager = None # Injected by MainController
         self._keep_awake_counter = 0
         self._keep_awake_lock = threading.Lock()
         
@@ -574,20 +573,61 @@ class TaskScheduler(QObject):
         launch_time = time.time()
         
         try:
-            # Use shell=False for reliable PID tracking
-            # If arguments are needed in the future, we should split program_path
-            process = subprocess.Popen(
-                program_path, 
-                shell=False,
-                cwd=str(Path(program_path).parent)
-            )
+            process = None
             
-            self.active_processes[task_id] = process
+            # Use native Windows launch for shortcuts (.lnk) to preserve execution context (flags, shim, etc.)
+            if program_path.lower().endswith('.lnk'):
+                logger.info(f"Target is a shortcut. Using os.startfile for native launch: {program_path}")
+                
+                # 1. Launch via OS (mimics double-click)
+                os.startfile(program_path)
+                
+                # 2. Attempt to find the spawned process
+                # We need to give it a moment to spawn
+                time.sleep(1.0) 
+                
+                # Try to resolve target name to help the tracker
+                target_name_hint = None
+                try:
+                    resolved, _ = resolve_shortcut(program_path)
+                    target_name_hint = Path(resolved).name
+                except:
+                    pass
+                    
+                captured_procs = get_spawned_processes(timeout=3, target_process_name=target_name_hint)
+                
+                if captured_procs:
+                    # Take the first plausible process
+                    process = captured_procs[0]
+                    logger.info(f"Adopted process from shortcut launch: {process.name()} (PID: {process.pid})")
+                else:
+                    logger.warning("Launched shortcut but could not identify the spawned process PID. Monitoring might be limited.")
+                    # We can't set self.active_processes[task_id] if we don't have a Process object
+            
+            else:
+                # Direct executable or other file - use Popen for strict control
+                process = subprocess.Popen(
+                    program_path, 
+                    shell=True, # shell=True might be safer for general windows execution if strictly Popen
+                    cwd=str(Path(program_path).parent)
+                )
+
+            if process:
+                self.active_processes[task_id] = process
+                
+                # Start Stuck Detection Monitor (via Addon)
+                if process.pid and self.addon_manager:
+                    self.addon_manager.notify_task_start(task, process)
+
             self.task_started.emit(task_id, task_name)
-            
-            # Log FINISHED event (immediately after start for shell=True)
             self.execution_logger.log_event(task_id, task_name, "FINISHED", "Process started successfully")
-            
+
+        # Cleanup: Remove the complex elevation fallback logic since os.startfile handles this natively
+        except Exception as e:
+            logger.error(f"Failed to execute task '{task_name}': {e}")
+            self.execution_logger.log_event(task_id, task_name, "FAILED", f"Error: {str(e)}")
+            self._release_keep_awake()
+
         except Exception as e:
             logger.error(f"Failed to execute task '{task_name}': {e}")
             # Log FAILED event
@@ -605,9 +645,9 @@ class TaskScheduler(QObject):
 
             self._release_keep_awake()
 
-        # Start Stuck Detection Monitor (runs in background)
-        if process and process.pid:
-            self._start_stuck_monitor(task_id, task_name, process.pid, task)
+        # Start Stuck Detection Monitor (via Addon)
+        if process and process.pid and self.addon_manager:
+            self.addon_manager.notify_task_start(task, process)
 
         # Handle Sleep After Completion
         if task.get('sleep_after', False):
@@ -776,7 +816,7 @@ class TaskScheduler(QObject):
                     program_path = task['program_path']
                     # Resolve shortcut if it is one
                     if program_path.lower().endswith('.lnk'):
-                        resolved_path = resolve_shortcut(program_path)
+                        resolved_path, _ = resolve_shortcut(program_path)
                         if resolved_path:
                             target_name = Path(resolved_path).name
                     else:
@@ -1042,247 +1082,9 @@ class TaskScheduler(QObject):
 
     def _start_stuck_monitor(self, task_id: int, task_name: str, pid: int, task: Dict):
         """
-        Start a background thread to monitor if the task gets stuck in an update/setup screen.
-        Runs for 5 minutes after launch.
+        Legacy method removed. Replaced by c4n-ALSentinelAddon.
         """
-        def monitor_thread():
-            from process_tracker import get_spawned_processes
-            
-            logger.info(f"Stuck Monitor started for '{task_name}' (PID: {pid})")
-            self.update_detector_started.emit(task_id, task_name)
-            start_time = time.time()
-            loop_count = 0
-            
-            # Initial wait for processes to spawn
-            time.sleep(2)
-            
-            # Monitor for 5 minutes (300 seconds)
-            while time.time() - start_time < 300:
-                # Check if main process is still running
-                if task_id not in self.active_processes:
-                    break
-                
-                # Maintain a set of PIDs to check, starting with the initial PID
-                # We need to dynamically update this list to handle launchers that exit
-                if 'tracked_pids' not in locals():
-                    tracked_pids = {pid}
-
-                current_living_pids = []
-                new_children_pids = set()
-
-                # Check all tracked PIDs
-                for t_pid in list(tracked_pids):
-                    try:
-                        proc = psutil.Process(t_pid)
-                        if proc.is_running():
-                            current_living_pids.append(t_pid)
-                            
-                            # Check for new children
-                            try:
-                                children = proc.children(recursive=True)
-                                for child in children:
-                                    if child.pid not in tracked_pids:
-                                        logger.info(f"StuckMonitor: Adopting child process {child.name()} (PID: {child.pid})")
-                                        new_children_pids.add(child.pid)
-                            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                                pass
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        pass
-                
-                # Add new children to tracking
-                if new_children_pids:
-                    tracked_pids.update(new_children_pids)
-                    current_living_pids.extend(list(new_children_pids))
-                
-                # Update list for this iteration
-                pids_to_check = current_living_pids
-                
-                # If NO processes are left alive, then we stop
-                if not pids_to_check:
-                    logger.info("StuckMonitor: All tracked processes finished. Stopping monitor.")
-                    break
-                
-                # Check for stuck state (Title)
-                stuck_title = self.stuck_detector.is_process_stuck(pids_to_check, STUCK_DETECTION_KEYWORDS)
-                
-                # Broad Search Fallback (Title) - If PID-based fails, look everywhere
-                if not stuck_title:
-                    all_titles = self.stuck_detector.get_all_window_titles()
-                    for title in all_titles:
-                        title_lower = title.lower()
-                        for kw in STUCK_DETECTION_KEYWORDS:
-                            if kw.lower() in title_lower:
-                                stuck_title = title
-                                logger.info(f"BROAD MATCH: Found stuck window title '{title}' globally")
-                                break
-                        if stuck_title: break
-                
-                # Check for stuck state (OCR) - Every 20 seconds (every 10th loop of 2s)
-                stuck_ocr = False
-                if not stuck_title and loop_count % 10 == 0:
-                    # Try PID-based first
-                    if self.stuck_detector.check_window_content(pids_to_check, STUCK_DETECTION_OCR_KEYWORDS):
-                        stuck_ocr = True
-                        logger.warning(f"STUCK DETECTED (UIA): Task '{task_name}' has error text in its windows")
-                    
-                    # Native OCR Fallback (If UIA fails)
-                    if not stuck_ocr:
-                         # Get HWNDs for tracked PIDs
-                        win_info = self.stuck_detector.get_window_titles_and_pids()
-                        tracked_hwnds = [hwnd for title, p, hwnd in win_info if p in pids_to_check]
-                        
-                        for hwnd in tracked_hwnds:
-                            text = self.stuck_detector.check_window_content_ocr(hwnd)
-                            if text:
-                                text_lower = text.lower()
-                                for kw in STUCK_DETECTION_OCR_KEYWORDS:
-                                    if kw.lower() in text_lower:
-                                        stuck_ocr = True
-                                        logger.warning(f"STUCK DETECTED (NATIVE OCR): Found '{kw}' in window text: '{text[:50]}...'")
-                                        break
-                            if stuck_ocr: break
-                    
-                    # Fallback to Global OCR
-                    if not stuck_ocr:
-                         # Use existing UIA global check
-                         if self.stuck_detector.check_global_window_content(STUCK_DETECTION_OCR_KEYWORDS):
-                             stuck_ocr = True
-                             logger.warning(f"STUCK DETECTED (GLOBAL UIA): Found update/error text in a visible window")
-
-                if stuck_title or stuck_ocr:
-                    reason = f"window '{stuck_title}'" if stuck_title else "error text (OCR)"
-                    logger.warning(f"STUCK DETECTED: Task '{task_name}' is stuck on {reason}")
-                    
-                    # Kill and Restart Logic
-                    # 1. Stop the task
-                    self.stop_task(task_id)
-                    
-                    # 2. Wait a bit
-                    time.sleep(5)
-                    
-                    # 3. Restart (Retry)
-                    logger.info(f"Restarting stuck task '{task_name}'...")
-                    
-                    retry_key = f"retry_{task_id}"
-                    retries = getattr(self, retry_key, 0)
-                    
-                    if retries < 3:
-                        setattr(self, retry_key, retries + 1)
-                        self.execute_immediately(task)
-                    else:
-                        logger.error(f"Task '{task_name}' stuck repeatedly. Giving up after 3 retries.")
-                        setattr(self, retry_key, 0)
-                    
-                    return # Exit monitor thread
-                
-                # Check for confirmation dialogs that need a button click (e.g., "Patching complete")
-                # This runs every 4 seconds (every 2nd loop of 2s)
-                if loop_count % 2 == 0:
-                    # Try PID-based first
-                    found_dialog = self.stuck_detector.find_confirmation_dialog(pids_to_check, CONFIRMATION_DIALOG_KEYWORDS)
-                    
-                    # Fallback to Global search for dialogs
-                    if not found_dialog:
-                        found_dialog = self.stuck_detector.find_confirmation_dialog([None], CONFIRMATION_DIALOG_KEYWORDS)
-                        if found_dialog:
-                            logger.info(f"BROAD MATCH: Found confirmation dialog globally for '{task_name}'")
-
-                    if found_dialog:
-                        logger.info(f"CONFIRMATION DIALOG: Task '{task_name}' has a dialog waiting for input")
-                        
-                        # Increment persistent dialog counter
-                        dlg_persist_attr = f"dlg_persist_{task_id}"
-                        current_persist_count = getattr(self, dlg_persist_attr, 0) + 1
-                        setattr(self, dlg_persist_attr, current_persist_count)
-                        
-                        # Try to auto-click the confirmation button
-                        pids_for_click = pids_to_check + [None]
-                        success = self.stuck_detector.click_confirmation_button(pids_for_click, CONFIRMATION_BUTTON_LABELS)
-                        
-                        if success:
-                            # Reset persistence counter on success
-                            setattr(self, dlg_persist_attr, 0)
-                            
-                            logger.info(f"AUTO-DISMISSED: Successfully clicked confirmation button for '{task_name}'")
-                            
-                            # Log to execution logger
-                            self.execution_logger.log_event(
-                                task_id,
-                                task_name,
-                                "AUTO_DISMISSED",
-                                "Confirmation dialog auto-dismissed (update/patch complete)"
-                            )
-                            
-                            # Update/Restart detection
-                            logger.info(f"RESTART DETECTED: Scheduling task '{task_name}' to re-run in 30 seconds (post-update restart)")
-                            
-                            self.execution_logger.log_event(
-                                task_id,
-                                task_name,
-                                "RESTART_SCHEDULED",
-                                "Task will re-run in 30 seconds after update/restart completes"
-                            )
-                            
-                            # Schedule re-run after 30 seconds
-                            restart_time = datetime.now() + timedelta(seconds=30)
-                            self.scheduler.add_job(
-                                func=self._check_and_execute,
-                                trigger=DateTrigger(run_date=restart_time),
-                                args=[task],
-                                name=f"restart_{task_name}_{restart_time.strftime('%H%M%S')}"
-                            )
-                            
-                            # Exit monitor - the new job will have its own monitor
-                            return
-                        else:
-                            # If click failed, check if we've reached the threshold for FORCE RESTART
-                            if current_persist_count >= 3:
-                                logger.error(f"PERSISTENT DIALOG: Task '{task_name}' has stuck dialog for ~12s. Forcing restart.")
-                                setattr(self, dlg_persist_attr, 0) # Reset counter
-                                
-                                self.execution_logger.log_event(
-                                    task_id,
-                                    task_name,
-                                    "STUCK_RESTART_DLG",
-                                    "Persistent un-clickable dialog detected. Forcefully restarting task."
-                                )
-                                
-                                # Use the existing kill-and-restart logic
-                                # 1. Stop the task
-                                self.stop_task(task_id)
-                                
-                                # 2. Wait a bit
-                                time.sleep(5)
-                                
-                                # 3. Restart (Retry)
-                                logger.info(f"Forcefully restarting stuck task '{task_name}'...")
-                                
-                                retry_key = f"retry_{task_id}"
-                                retries = getattr(self, retry_key, 0)
-                                if retries < 3:
-                                    setattr(self, retry_key, retries + 1)
-                                    self.execute_immediately(task)
-                                else:
-                                    logger.error(f"Task '{task_name}' stuck repeatedly on dialog. Giving up.")
-                                    setattr(self, retry_key, 0)
-                                
-                                return # Exit monitor thread
-                            else:
-                                logger.warning(f"Click attempts failed. Dialog persistence: {current_persist_count}/3")
-                    else:
-                        # Reset counter if dialog disappears
-                        dlg_persist_attr = f"dlg_persist_{task_id}"
-                        if hasattr(self, dlg_persist_attr) and getattr(self, dlg_persist_attr, 0) > 0:
-                             setattr(self, dlg_persist_attr, 0)
-                
-                time.sleep(2) # Check every 2 seconds (was 5s)
-                loop_count += 1
-            
-            logger.debug(f"Stuck Monitor finished for '{task_name}'")
-            self.update_detector_stopped.emit(task_id)
-
-        thread = threading.Thread(target=monitor_thread, daemon=True)
-        thread.start()
+        pass
 
     def _cleanup_finished_processes(self):
         """

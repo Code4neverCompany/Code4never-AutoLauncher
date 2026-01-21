@@ -358,6 +358,8 @@ class SettingsInterface(ScrollArea):
         self.expandLayout.addWidget(self.powerGroup)
         self.expandLayout.addWidget(self.updatesGroup)
         self.expandLayout.addWidget(self.blocklistGroup)
+        
+        
         self.expandLayout.addStretch(1)
         
     def _on_execution_mode_changed(self, index: int):
@@ -668,6 +670,7 @@ class SettingsInterface(ScrollArea):
         )
         dialog.accept()
     
+
     def _reset_blocklist(self):
         """Reset blocklist to empty."""
         self.settings_manager.set('blocklist_processes', [])

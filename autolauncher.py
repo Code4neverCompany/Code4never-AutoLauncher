@@ -41,11 +41,12 @@ from theme_manager import ThemeManager
 from task_dialog import TaskDialog
 from scheduler import TaskScheduler
 from settings_interface import SettingsInterface
+from addon_view import AddonView
 from about_interface import AboutInterface
 from update_manager import UpdateManager
 from language_manager import get_text, get_language_manager
 from widgets.status_badge import StatusBadge
-from widgets.update_detector_indicator import UpdateDetectorIndicator
+from widgets.status_badge import StatusBadge
 from logger import get_logger
 from config import (
     APP_NAME,
@@ -106,8 +107,8 @@ class AutolauncherApp(FluentWindow):
         self.scheduler.task_started.connect(self._handle_task_started)
         self.scheduler.task_finished.connect(self._handle_task_finished)
         self.scheduler.task_postponed.connect(self._handle_task_postponed)
-        self.scheduler.update_detector_started.connect(self._on_update_detector_started)
-        self.scheduler.update_detector_stopped.connect(self._on_update_detector_stopped)
+        self.scheduler.task_finished.connect(self._handle_task_finished)
+        self.scheduler.task_postponed.connect(self._handle_task_postponed)
         
         # Setup UI (now with correct theme already applied)
         self._init_ui()
@@ -124,6 +125,8 @@ class AutolauncherApp(FluentWindow):
         logger.info("Autolauncher application initialized")
         
         QTimer.singleShot(100, self.controller.setup_auto_update)
+        # Show addon startup toast
+        QTimer.singleShot(2000, self._show_addon_startup_toast)
 
     def _connect_controller_signals(self):
         """Connect signals from Controller to View methods."""
@@ -141,8 +144,7 @@ class AutolauncherApp(FluentWindow):
         self.controller.task_finished.connect(self._handle_task_finished)
         self.controller.task_postponed.connect(self._handle_task_postponed)
         self.controller.ask_user_permission.connect(self._handle_task_permission_request)
-        self.controller.update_detector_started.connect(self._on_update_detector_started)
-        self.controller.update_detector_stopped.connect(self._on_update_detector_stopped)
+        self.controller.ask_user_permission.connect(self._handle_task_permission_request)
 
     def _on_task_added_by_controller(self, task):
         """Handle task added signal."""
@@ -463,6 +465,9 @@ class AutolauncherApp(FluentWindow):
         self.settingsInterface.date_format_changed.connect(self._refresh_task_table)
         self.settingsInterface.language_changed.connect(self.reload_ui_text)
         
+        # Create Addon View
+        self.addonInterface = AddonView(self)
+        
         # Create about interface
         self.aboutInterface = AboutInterface(self)
         
@@ -484,6 +489,12 @@ class AutolauncherApp(FluentWindow):
             get_text('main_window.tasks')
         )
         
+        self.addonItem = self.addSubInterface(
+            self.addonInterface,
+            FluentIcon.TILES, # or PEOPLE
+            "Addons" # TODO: Add to language manager
+        )
+        
         self.aboutItem = self.addSubInterface(
             self.aboutInterface,
             FluentIcon.INFO,
@@ -497,6 +508,10 @@ class AutolauncherApp(FluentWindow):
             get_text('main_window.settings'),
             position=NavigationItemPosition.BOTTOM
         )
+        
+        # Populate Addon View after controller is ready
+        if hasattr(self, 'controller') and self.controller.addon_manager:
+            self.addonInterface.populate_addons(self.controller.addon_manager)
     
     def _toggle_theme(self):
         """Toggle between light and dark themes."""
@@ -550,9 +565,21 @@ class AutolauncherApp(FluentWindow):
         self.toolbarLayout.addWidget(self.viewLogButton)
         self.toolbarLayout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
         
-        # Update Detector Indicator (blinking when active)
-        self.updateDetectorIndicator = UpdateDetectorIndicator(self)
-        self.toolbarLayout.addWidget(self.updateDetectorIndicator)
+        self.toolbarLayout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        
+        # Addon Indicators Container
+        self.addonContainer = QWidget()
+        self.addonLayout = QHBoxLayout(self.addonContainer)
+        self.addonLayout.setContentsMargins(0, 0, 0, 0)
+        self.addonLayout.setSpacing(5)
+        
+        # Load indicators from AddonManager
+        indicators = self.controller.addon_manager.get_all_indicators()
+        if indicators:
+            for widget in indicators:
+                self.addonLayout.addWidget(widget)
+                widget.hide() # Ensure initially hidden if handled by addon logic
+            self.toolbarLayout.addWidget(self.addonContainer)
         
         self.toolbarLayout.addWidget(self.themeButton)
         
@@ -671,29 +698,33 @@ class AutolauncherApp(FluentWindow):
             status_badge = StatusBadge()
             
             # Determine status
+            # Determine status
             if not task.get('enabled', True):
                 status_badge.set_status("Disabled")
             elif task_id in self.scheduler.active_processes:
                 status_badge.set_status("Running")
             else:
-                # Check if job is paused in scheduler
-                if self.scheduler.is_job_paused(task_id):
-                    status_badge.set_status("Paused")
-                else:
-                    # Check if there's a postponed retry scheduled
-                    postponed_time = self._get_postponed_time(task_id)
-                    if postponed_time:
-                        status_badge.set_status("Postponed", f"@ {postponed_time}")
+                # Check for Expired first (for Once tasks that are done)
+                expired = False
+                try:
+                    schedule_time = datetime.fromisoformat(task.get('schedule_time'))
+                    recurrence = task.get('recurrence', 'Once')
+                    if recurrence == 'Once' and schedule_time <= datetime.now():
+                        status_badge.set_status("Expired")
+                        expired = True
+                except:
+                    pass
+                
+                if not expired:
+                    # Check if job is paused in scheduler
+                    if self.scheduler.is_job_paused(task_id):
+                        status_badge.set_status("Paused")
                     else:
-                        # Check if one-time task is expired
-                        try:
-                            schedule_time = datetime.fromisoformat(task.get('schedule_time'))
-                            recurrence = task.get('recurrence', 'Once')
-                            if recurrence == 'Once' and schedule_time <= datetime.now():
-                                status_badge.set_status("Expired")
-                            else:
-                                status_badge.set_status("Enabled")
-                        except:
+                        # Check if there's a postponed retry scheduled
+                        postponed_time = self._get_postponed_time(task_id)
+                        if postponed_time:
+                            status_badge.set_status("Postponed", f"@ {postponed_time}")
+                        else:
                             status_badge.set_status("Enabled")
             
             # Wrap in container for centering
@@ -833,10 +864,20 @@ class AutolauncherApp(FluentWindow):
         
         if task:
             # Execute via controller
-            self.controller.execute_task_now(task_id)
-            
-            # Notification is handled by _handle_task_started signal
-            logger.info(f"Manually executed task ID {task_id}")
+            if self.controller.execute_task_now(task_id):
+                # Notification is handled by _handle_task_started signal
+                logger.info(f"Manually executed task ID {task_id}")
+            else:
+                # Show error if execution failed immediately (e.g. invalid path)
+                InfoBar.error(
+                    title="Execution Failed",
+                    content="Could not start the task. Check logs for details.",
+                    orient=Qt.Orientation.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self
+                )
 
 
     def _add_task(self):
@@ -1165,17 +1206,6 @@ class AutolauncherApp(FluentWindow):
         # Refresh table to show Postponed status
         self._refresh_task_table()
     
-    def _on_update_detector_started(self, task_id: int, task_name: str):
-        """Handle Update Detector started (show blinking indicator)."""
-        if hasattr(self, 'updateDetectorIndicator'):
-            self.updateDetectorIndicator.set_active(True, task_name)
-            logger.debug(f"Update Detector indicator activated for '{task_name}'")
-    
-    def _on_update_detector_stopped(self, task_id: int):
-        """Handle Update Detector stopped (hide indicator)."""
-        if hasattr(self, 'updateDetectorIndicator'):
-            self.updateDetectorIndicator.set_active(False)
-            logger.debug("Update Detector indicator deactivated")
     
     def changeEvent(self, event):
         """Handle system theme changes and enforce user preference."""
@@ -1292,6 +1322,34 @@ class AutolauncherApp(FluentWindow):
             2000
         )
 
+    def _show_addon_startup_toast(self):
+        """Show toast with enabled addons."""
+        try:
+            manager = self.controller.addon_manager
+            enabled_addons = manager.get_enabled_addons()
+            
+            if enabled_addons:
+                names = [addon.metadata.name for addon in enabled_addons]
+                count = len(names)
+                
+                if count == 1:
+                    title = "Addon Loaded"
+                    content = f"{names[0]} is active."
+                else:
+                    title = f"{count} Addons Loaded"
+                    content = ", ".join(names)
+                
+                InfoBar.success(
+                    title=title,
+                    content=content,
+                    orient=Qt.Orientation.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP_RIGHT,
+                    duration=4000,
+                    parent=self
+                )
+        except Exception as e:
+            logger.error(f"Failed to show addon toast: {e}")
 
 def main():
     """Main entry point for the application."""
@@ -1321,7 +1379,7 @@ def main():
     import win32gui
     import win32con
     
-    MUTEX_NAME = "Global\\AutoLauncher_SingleInstance_Mutex_v1"
+    MUTEX_NAME = "Global\\AutoLauncher_SingleInstance_Mutex_v6"
     
     # Try to create named mutex
     kernel32 = ctypes.windll.kernel32

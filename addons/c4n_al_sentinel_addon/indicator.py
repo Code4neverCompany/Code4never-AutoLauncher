@@ -3,12 +3,12 @@ Update Detector Indicator Widget
 Blinking badge showing when the Auto Update Detector is actively monitoring a task.
 """
 
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty, QTimer
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, pyqtProperty
 from PyQt6.QtGui import QPainter, QColor, QFont
 from PyQt6.QtWidgets import QWidget
 
 
-class UpdateDetectorIndicator(QWidget):
+class SentinelIndicator(QWidget):
     """
     Visual indicator showing Update Detector status.
     Blinks when actively monitoring a task, hidden when inactive.
@@ -53,7 +53,7 @@ class UpdateDetectorIndicator(QWidget):
         self._task_name = task_name
         
         if active:
-            self.setToolTip(f"Monitoring: {task_name}\nDetecting update dialogs for 5 minutes")
+            self.setToolTip(f"Sentinel: Monitoring '{task_name}'\nWatching for update dialogs...")
             self._pulse_animation.start()
             self.show()
         else:
@@ -91,5 +91,5 @@ class UpdateDetectorIndicator(QWidget):
         painter.setFont(font)
         
         # Draw magnifying glass icon and text
-        text = "🔍 Update Detector"
+        text = "🔍 Sentinel Active"
         painter.drawText(0, 0, self.width(), self.height(), Qt.AlignmentFlag.AlignCenter, text)

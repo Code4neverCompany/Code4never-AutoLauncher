@@ -1,11 +1,11 @@
-from stuck_detector import StuckDetector
+from addons.c4n_al_sentinel_addon.logic import SentinelLogic
 import time
 import os
 import psutil
 from pywinauto import Desktop
 
 def test_clicker():
-    detector = StuckDetector()
+    detector = SentinelLogic()
     print("Searching for 'Wuthering Waves' simulation window...")
     
     target_pid = None

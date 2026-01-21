@@ -1,5 +1,31 @@
 # AutoLauncher Release Notes
 
+## v1.8.0 (2026-01-21) - The Addon System Update
+This release introduces the **Addon System**, a major architectural upgrade that allows the Autolauncher to be successfully extended with new capabilities.
+
+### 🧩 New Addon Architecture
+*   **Foundational Plugin System**: Core support for discovering, loading, and managing external modules.
+*   **c4n-ALSentinelAddon**: The powerful "Update Detector" has been migrated to this new system as the **"Beacon Sentinel"**.
+*   **Dedicated UI**: A new "Addons" page in the navigation sidebar to manage your extensions.
+
+### ✨ Improvements
+*   **Startup Toast**: Get instant feedback on which addons are active when the app launches.
+*   **Settings Persistence**: Your Addon enable/disable choices are saved permanently.
+*   **Code Cleanup**: Removed legacy spaghetti code for a cleaner, more stable backend.
+
+### 🛠️ Fixes
+*   **UI Crash**: Fixed a crash in the Settings menu related to missing icon assets.
+*   **WuWa Support**: Enhanced detection for "Wuthering Waves" update dialogs (via Sentinel Addon).
+
+## v1.7.1 (2026-01-16) - UI, Permissions & Build Fixes
+This patch release addresses critical UI status bugs, permission errors on restricted systems, and ensures all dependencies are correctly bundled.
+
+### Critical Fixes
+*   **FIX: UI Status Refresh** - Task icons now correctly reflect real-time status (Resolved "Paused" icon bug).
+*   **FIX: Startup Crash (Permission Error)** - Logs and Data are now strictly stored in `%APPDATA%` to prevent "Access Denied" errors.
+*   **FIX: Build System** - Resolved critical PyQt6 exclusion issue; UI libraries are now correctly bundled in the executable.
+*   **FIX: Localization** - Enhanced German/English translation consistency.
+
 ## v1.7.0 (2026-01-15) - MVC Architecture & Backend Stability
 This major release transforms the application architecture for long-term stability and introduces critical backend safeguards.
 

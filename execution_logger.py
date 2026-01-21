@@ -19,14 +19,18 @@ class ExecutionLogger:
     Stores events like: STARTED, FINISHED, FAILED, POSTPONED, SKIPPED.
     """
     
-    def __init__(self, log_file: str = "data/execution_log.json"):
+    def __init__(self, log_file: Optional[str] = None):
         """
         Initialize the execution logger.
         
         Args:
-            log_file: Path to the log file
+            log_file: Path to the log file. If None, uses default in DATA_DIR.
         """
-        self.log_file = Path(log_file)
+        if log_file:
+            self.log_file = Path(log_file)
+        else:
+            from config import DATA_DIR
+            self.log_file = DATA_DIR / "execution_log.json"
         self._ensure_log_file()
         
     def _ensure_log_file(self):

@@ -16,6 +16,7 @@
             ]
         },
         {
+<<<<<<< HEAD
             "version": "1.7.1",
             "date": "2026-01-16",
             "changes": [
@@ -26,6 +27,8 @@
             ]
         },
         {
+=======
+>>>>>>> 8bc8d98 (feat: v1.8.0 Release - Addon System & Beacon Sentinel)
             "version": "1.7.0",
             "date": "2026-01-15",
             "changes": [
