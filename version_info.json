@@ -1,8 +1,15 @@
 {
-    "version": "1.8.2",
-    "release_date": "2026-01-21",
-    "description": "Hotfix v1.8.2 - Range Setting Crash",
+    "version": "1.8.3",
+    "release_date": "2026-01-23",
+    "description": "Hotfix v1.8.3 - Resolved Import Error",
     "changelog": [
+        {
+            "version": "1.8.3",
+            "date": "2026-01-23",
+            "changes": [
+                "FIX: Startup Crash - Resolved 'NameError: QObject is not defined' in Settings Interface"
+            ]
+        },
         {
             "version": "1.8.2",
             "date": "2026-01-21",

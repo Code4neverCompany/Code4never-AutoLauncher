@@ -1,5 +1,5 @@
 #define MyAppName "Code4never-AutoLauncher"
-#define MyAppVersion "1.8.2"
+#define MyAppVersion "1.8.3"
 #define MyAppPublisher "4never Company"
 #define MyAppURL "https://github.com/Code4neverCompany/Code4never-AutoLauncher"
 #define MyAppExeName "Autolauncher.exe"
@@ -17,7 +17,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={userpf}\Autolauncher
 DefaultGroupName={#MyAppName}
 PrivilegesRequired=lowest
-OutputBaseFilename=c4n-AutoLauncher_Setup_v1.8.2
+OutputBaseFilename=c4n-AutoLauncher_Setup_v1.8.3
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64

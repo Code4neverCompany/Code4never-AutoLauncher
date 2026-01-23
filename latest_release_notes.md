@@ -1,6 +1,5 @@
-# v1.8.2 (2026-01-21) - Hotfix: Settings Crash
-This critical hotfix resolves a startup crash caused by an incorrect widget configuration in the Settings menu.
+# v1.8.3 (2026-01-23) - Hotfix: Import Error
+This critical hotfix resolves a startup crash caused by a missing import in the Settings module.
 
 ### Fixes
-*   **CRITICAL FIX**: Resolved `AttributeError: 'int' object has no attribute 'range'` when initializing the "Idle Threshold" setting.
-*   **Stability**: Implemented a compatibility layer for `RangeSettingCard` to ensure safe operation.
+*   **CRITICAL FIX**: Resolved `NameError: name 'QObject' is not defined` when initializing ManualRangeConfigItem.

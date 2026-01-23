@@ -7,7 +7,7 @@ Displays application settings.
 
 import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFileDialog
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QObject
 from qfluentwidgets import (
     SettingCardGroup,
     SwitchSettingCard,
