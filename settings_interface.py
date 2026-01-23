@@ -579,6 +579,7 @@ class SettingsInterface(ScrollArea):
         seconds = value * 60
         self.settings_manager.set('smart_sleep_threshold', seconds)
         logger.info(f"Smart Sleep threshold set to: {value} min ({seconds}s)")
+    def _open_blocklist_dialog(self):
         """Open dialog to edit blocklist."""
         from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QFileDialog
         from qfluentwidgets import PrimaryPushButton, PushButton, SubtitleLabel, BodyLabel
