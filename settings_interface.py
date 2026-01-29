@@ -37,6 +37,13 @@ from logger import get_logger
 from language_manager import get_language_manager, set_language
 from config import DEFAULT_LANGUAGE, DEFAULT_BLOCKLIST_PROCESSES
 from startup_manager import StartupManager
+from settings.blocklist_manager import (
+    load_known_programs, 
+    download_program_list, 
+    get_available_drives,
+    ProgramScanner,
+    categorize_found_programs
+)
 
 logger = get_logger(__name__)
 
@@ -715,74 +722,24 @@ class SettingsInterface(ScrollArea):
         )
     
     def _load_known_programs(self) -> dict:
-        """Load known programs from JSON file (local or bundled)."""
-        import json
-        from pathlib import Path
-        
-        # Try loading from AppData first (updated version)
-        appdata_path = Path(os.environ.get('APPDATA', '')) / 'c4n-AutoLauncher' / 'known_programs.json'
-        
-        if appdata_path.exists():
-            try:
-                with open(appdata_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    # Convert list format to tuple format
-                    return {k: tuple(v) for k, v in data.get('programs', {}).items()}
-            except Exception as e:
-                logger.warning(f"Failed to load AppData programs: {e}")
-        
-        # Fall back to bundled file
-        bundled_path = Path(__file__).parent / 'known_programs.json'
-        
-        if bundled_path.exists():
-            try:
-                with open(bundled_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    return {k: tuple(v) for k, v in data.get('programs', {}).items()}
-            except Exception as e:
-                logger.warning(f"Failed to load bundled programs: {e}")
-        
-        # Return empty dict if nothing found
-        logger.warning("No known_programs.json found")
-        return {}
+        """Load known programs from JSON file. Delegated to blocklist_manager."""
+        return load_known_programs()
     
     def _update_program_list(self):
         """Download latest known_programs.json from GitHub."""
-        import json
-        import urllib.request
-        from pathlib import Path
+        InfoBar.info(
+            title="Updating...",
+            content="Downloading latest program list",
+            orient=Qt.Orientation.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=2000,
+            parent=self
+        )
         
-        # GitHub raw URL for the file
-        GITHUB_URL = "https://raw.githubusercontent.com/Code4neverCompany/Code4never-AutoLauncher/main/known_programs.json"
+        success, version, program_count = download_program_list()
         
-        try:
-            InfoBar.info(
-                title="Updating...",
-                content="Downloading latest program list",
-                orient=Qt.Orientation.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP_RIGHT,
-                duration=2000,
-                parent=self
-            )
-            
-            # Download the file
-            with urllib.request.urlopen(GITHUB_URL, timeout=10) as response:
-                data = json.loads(response.read().decode('utf-8'))
-            
-            # Save to AppData
-            appdata_dir = Path(os.environ.get('APPDATA', '')) / 'c4n-AutoLauncher'
-            appdata_dir.mkdir(parents=True, exist_ok=True)
-            
-            appdata_path = appdata_dir / 'known_programs.json'
-            with open(appdata_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2)
-            
-            program_count = len(data.get('programs', {}))
-            version = data.get('version', 'unknown')
-            
-            logger.info(f"Updated known_programs.json to v{version} ({program_count} programs)")
-            
+        if success:
             InfoBar.success(
                 title="Update Complete",
                 content=f"Downloaded {program_count} programs (v{version})",
@@ -792,23 +749,10 @@ class SettingsInterface(ScrollArea):
                 duration=3000,
                 parent=self
             )
-            
-        except urllib.error.URLError as e:
-            logger.error(f"Failed to download program list: {e}")
+        else:
             InfoBar.error(
                 title="Update Failed",
-                content="Could not connect to server",
-                orient=Qt.Orientation.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP_RIGHT,
-                duration=3000,
-                parent=self
-            )
-        except Exception as e:
-            logger.error(f"Failed to update program list: {e}")
-            InfoBar.error(
-                title="Update Failed",
-                content=str(e)[:50],
+                content="Could not download program list",
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
