@@ -58,9 +58,9 @@ The v1.8.0 "Addon System Update" was a significant architectural win, introducin
 
 ## Decisions & Next Steps
 
-1. **Immediate**: The Board recommends executing P0 tasks before any new feature work.
-2. **Next Sprint**: Prioritize the Smoke Test script to prevent future hotfix chains.
-3. **Future**: Modularize the codebase incrementally during related feature work.
+1. ✅ **P0 Complete**: README updated, dependencies pinned.
+2. ✅ **P1 Complete**: Codebase cleanup done (~2.5GB freed), Smoke Test created.
+3. 🚧 **P2 Pending**: Modularize the codebase incrementally during future feature work.
 
 ---
 
