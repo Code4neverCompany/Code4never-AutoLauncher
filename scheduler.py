@@ -15,6 +15,7 @@ import threading
 from power_manager import PowerManager
 from config import STUCK_DETECTION_KEYWORDS, STUCK_DETECTION_OCR_KEYWORDS, CONFIRMATION_DIALOG_KEYWORDS, CONFIRMATION_BUTTON_LABELS
 from input_monitor import get_input_monitor, start_input_monitor
+import system_monitor  # Extracted system busy detection
 
 from PyQt6.QtCore import QObject, pyqtSignal
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -31,11 +32,7 @@ from process_tracker import resolve_shortcut, get_spawned_processes
 logger = get_logger(__name__)
 
 
-class LASTINPUTINFO(ctypes.Structure):
-    _fields_ = [
-        ('cbSize', ctypes.c_uint),
-        ('dwTime', ctypes.c_uint),
-    ]
+
 
 
 class TaskScheduler(QObject):
@@ -109,118 +106,15 @@ class TaskScheduler(QObject):
         logger.info("TaskScheduler initialized and started")
     
     def _get_idle_time(self) -> float:
-        """
-        Get system idle time in seconds.
-        """
-        lastInputInfo = LASTINPUTINFO()
-        lastInputInfo.cbSize = ctypes.sizeof(lastInputInfo)
-        
-        if ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lastInputInfo)):
-            millis = ctypes.windll.kernel32.GetTickCount() - lastInputInfo.dwTime
-            return millis / 1000.0
-        else:
-            return 0
+        """Get system idle time in seconds. Delegated to system_monitor."""
+        return system_monitor.get_idle_time()
     
     def _is_system_busy(self) -> tuple:
         """
         Check if the system is currently busy based on multiple factors.
-        
-        Returns:
-            tuple: (is_busy: bool, reason: str)
+        Delegated to system_monitor for cleaner separation of concerns.
         """
-        reasons = []
-        
-        # Thresholds (configurable in future)
-        CPU_THRESHOLD = 50  # percent
-        RAM_THRESHOLD = 80  # percent
-        GPU_THRESHOLD = 50  # percent
-        IDLE_THRESHOLD = 60  # seconds
-        
-        # Load user-configured blocklist (falls back to defaults)
-        # Load user-configured blocklist (falls back to defaults)
-        from config import DEFAULT_BLOCKLIST_PROCESSES, BLOCKLIST_FILE
-        import json
-        
-        user_blocklist = []
-        
-        # 1. Try to load from JSON file (Highest Priority - External Config)
-        if BLOCKLIST_FILE.exists():
-            try:
-                with open(BLOCKLIST_FILE, 'r', encoding='utf-8') as f:
-                    user_blocklist = json.load(f)
-            except Exception as e:
-                logger.warning(f"Failed to load blocklist.json: {e}")
-        
-        # 2. If nothing in JSON, try settings (Legacy)
-        if not user_blocklist:
-            user_blocklist = self.settings_manager.get('blocklist_processes', None)
-            
-        # 3. Fallback to hardcoded defaults
-        if not user_blocklist:
-            user_blocklist = DEFAULT_BLOCKLIST_PROCESSES
-        
-        
-        # Convert to lowercase set for efficient lookup
-        BLOCKLIST_PROCESSES = set(p.lower() for p in user_blocklist)
-        
-        # 1. Check CPU usage
-        try:
-            cpu_percent = psutil.cpu_percent(interval=0.5)
-            if cpu_percent > CPU_THRESHOLD:
-                reasons.append(f"CPU at {cpu_percent:.0f}%")
-        except Exception as e:
-            logger.debug(f"CPU check failed: {e}")
-        
-        # 2. Check RAM usage
-        try:
-            ram = psutil.virtual_memory()
-            if ram.percent > RAM_THRESHOLD:
-                reasons.append(f"RAM at {ram.percent:.0f}%")
-        except Exception as e:
-            logger.debug(f"RAM check failed: {e}")
-        
-        # 3. Check GPU usage (optional - requires GPUtil)
-        try:
-            import GPUtil
-            gpus = GPUtil.getGPUs()
-            if gpus:
-                gpu_load = max(gpu.load * 100 for gpu in gpus)
-                if gpu_load > GPU_THRESHOLD:
-                    reasons.append(f"GPU at {gpu_load:.0f}%")
-        except ImportError:
-            pass  # GPUtil not installed, skip GPU check
-        except Exception as e:
-            logger.debug(f"GPU check failed: {e}")
-        
-        # NOTE: We do NOT check idle time for POSTPONE decisions.
-        # POSTPONE only triggers on:
-        #   1. Blocklist programs running (e.g., games, IDEs)
-        #   2. High resource usage (CPU/GPU/RAM above threshold)
-        # User idle time is irrelevant - task runs as long as no blocklist programs
-        # and resources are available.
-        
-        # 5. Check for known games/apps running
-        try:
-            running_blocklist = []
-            for proc in psutil.process_iter(['name']):
-                try:
-                    proc_name = proc.info['name'].lower()
-                    if proc_name in BLOCKLIST_PROCESSES:
-                        running_blocklist.append(proc.info['name'])
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-            
-            if running_blocklist:
-                # Deduplicate
-                unique_apps = list(set(running_blocklist))[:3]  # Show max 3
-                reasons.append(f"Running: {', '.join(unique_apps)}")
-        except Exception as e:
-            logger.debug(f"Process check failed: {e}")
-        
-        if reasons:
-            return (True, "; ".join(reasons))
-        else:
-            return (False, "System is idle")
+        return system_monitor.is_system_busy(self.settings_manager)
     
     def _on_job_missed(self, event):
         """
