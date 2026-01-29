@@ -1,8 +1,18 @@
 {
-    "version": "1.8.4",
-    "release_date": "2026-01-23",
-    "description": "Hotfix v1.8.4 - Cumulative Stability Fix",
+    "version": "1.8.5",
+    "release_date": "2026-01-29",
+    "description": "v1.8.5 - Codebase Modularization",
     "changelog": [
+        {
+            "version": "1.8.5",
+            "date": "2026-01-29",
+            "changes": [
+                "REFACTOR: Extracted system busy detection to new system_monitor.py module",
+                "REFACTOR: Extracted blocklist management to settings/blocklist_manager.py",
+                "IMPROVEMENT: Reduced scheduler.py by ~100 lines for better maintainability",
+                "IMPROVEMENT: Reduced settings_interface.py by ~60 lines"
+            ]
+        },
         {
             "version": "1.8.4",
             "date": "2026-01-23",
