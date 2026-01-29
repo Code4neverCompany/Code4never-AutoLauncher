@@ -5,7 +5,8 @@
 PyQt6>=6.5.0
 
 # PyQt6-Fluent-Widgets - Microsoft Fluent Design widgets library
-PyQt6-Fluent-Widgets>=1.7.0
+# PINNED: v1.8.1 crash was caused by missing FluentIcon.MOON in unpinned version
+PyQt6-Fluent-Widgets~=1.9.2
 
 # APScheduler - Advanced Python Scheduler for task scheduling
 APScheduler>=3.10.0
