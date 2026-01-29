@@ -444,6 +444,24 @@ class TaskScheduler(QObject):
             return job.next_run_time
         return None
     
+    def get_soonest_task_time(self) -> Optional[datetime]:
+        """
+        Get the next run time across ALL scheduled user tasks.
+        Used by Smart Auto-Update to determine if an update should be deferred.
+        
+        Returns:
+            datetime of the soonest scheduled task, or None if no tasks scheduled.
+        """
+        soonest = None
+        for job in self.scheduler.get_jobs():
+            # Skip system jobs (prewake, cleanup, etc.)
+            if not job.id.startswith('task_'):
+                continue
+            if job.next_run_time:
+                if soonest is None or job.next_run_time < soonest:
+                    soonest = job.next_run_time
+        return soonest
+    
     def execute_immediately(self, task: Dict) -> bool:
         """Execute a task immediately (bypassing checks)."""
         try:

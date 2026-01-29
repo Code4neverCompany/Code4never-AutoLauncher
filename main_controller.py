@@ -4,6 +4,7 @@ Handles business logic, manager coordination, and bridges the UI (View) with the
 Implementation of the MVC pattern to decouple logic from the View.
 """
 
+from datetime import datetime, timedelta
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer, Qt
 from PyQt6.QtWidgets import QApplication
 
@@ -65,6 +66,7 @@ class MainController(QObject):
         # 3. Setup Internal State
         self.pending_update_info = None
         self.notified_versions = set()
+        self.update_deferred_until_task_complete = False  # Smart Auto-Update flag
         
         # 4. Initialize Language
         self._init_language()
@@ -88,6 +90,7 @@ class MainController(QObject):
         """Connect scheduler signals to controller signals."""
         self.scheduler.task_started.connect(self.task_started.emit)
         self.scheduler.task_finished.connect(self.task_finished.emit)
+        self.scheduler.task_finished.connect(self._on_task_finished_check_pending_update)  # Smart Auto-Update
         self.scheduler.task_postponed.connect(self.task_postponed.emit)
         self.scheduler.ask_user_permission.connect(self.ask_user_permission.emit)
 
@@ -156,7 +159,7 @@ class MainController(QObject):
     # --- Update Logic Methods ---
     
     def check_for_updates(self, silent=True):
-        """Check for updates."""
+        """Check for updates with Smart Auto-Update logic."""
         if silent:
             update_info, error = self.update_manager.check_for_updates_silent()
             if error:
@@ -171,13 +174,67 @@ class MainController(QObject):
                     logger.debug(f"Skipping duplicate update alert for {version}")
                     return
                 
-                self.notified_versions.add(version)
-                self.update_available.emit(update_info)
+                # Smart Auto-Update: Check if we should defer
+                if self._should_install_update_now():
+                    self.notified_versions.add(version)
+                    self.update_available.emit(update_info)
+                    logger.info(f"Update {version} available - notifying user")
+                else:
+                    # Defer the update until after task completes
+                    self.pending_update_info = update_info
+                    self.update_deferred_until_task_complete = True
+                    logger.info(f"Update {version} deferred - task imminent within 30 minutes")
             else:
                 self.no_update_available.emit()
         else:
-            # Interactive check (not implemented yet for controller, usually direct return)
+            # Interactive check (not implemented yet for controller)
             pass
+    
+    def _should_install_update_now(self) -> bool:
+        """
+        Smart Auto-Update: Determine if an update should proceed now.
+        
+        Returns:
+            True if safe to update (no tasks within 30 min), False otherwise.
+        """
+        soonest_task_time = self.scheduler.get_soonest_task_time()
+        
+        if soonest_task_time is None:
+            logger.debug("Smart Update: No scheduled tasks - safe to update")
+            return True
+        
+        time_until_task = soonest_task_time - datetime.now(soonest_task_time.tzinfo)
+        minutes_until_task = time_until_task.total_seconds() / 60
+        
+        if minutes_until_task > 30:
+            logger.debug(f"Smart Update: Next task in {minutes_until_task:.0f} min - safe to update")
+            return True
+        
+        logger.debug(f"Smart Update: Task imminent in {minutes_until_task:.0f} min - deferring update")
+        return False
+    
+    def _on_task_finished_check_pending_update(self, task_id: int):
+        """
+        Smart Auto-Update: After a task completes, check if there's a pending update.
+        If safe, emit the update notification now.
+        """
+        if not self.update_deferred_until_task_complete or not self.pending_update_info:
+            return
+        
+        logger.info("Smart Update: Task completed - checking if pending update can proceed...")
+        
+        if self._should_install_update_now():
+            version = self.pending_update_info['version']
+            if version not in self.notified_versions:
+                self.notified_versions.add(version)
+                self.update_available.emit(self.pending_update_info)
+                logger.info(f"Smart Update: Deferred update {version} now proceeding")
+            
+            # Clear pending state
+            self.pending_update_info = None
+            self.update_deferred_until_task_complete = False
+        else:
+            logger.info("Smart Update: Another task imminent - continuing to defer")
 
     def setup_auto_update(self):
         """Setup automatic update checking based on user settings."""
