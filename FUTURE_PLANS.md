@@ -6,6 +6,12 @@
 
 ## ✅ Recently Shipped
 
+### v1.8.5 - Smart Auto-Update *(In Development)*
+
+- **Task-Aware Updates**: Defers updates when scheduled tasks are imminent (<30 min)
+- **Zero Interruption**: Queues updates until after task completion
+- **Automatic Trigger**: Proceeds with update after all imminent tasks finish
+
 ### v1.8.0 - Addon System
 
 - **Plugin Architecture**: Extensible system for community addons
@@ -28,17 +34,6 @@
 ## 🚧 Planned Features
 
 ### Priority 1: Core Improvements
-
-#### Smart Auto-Update Installation 🚀
-
-**Status**: Ready for Development | **Effort**: 4-6 hours
-
-Intelligently install updates only when no tasks are imminent.
-
-- Check next scheduled task time before updating
-- If next task is **>30 min away**: Install immediately
-- If next task is **<30 min away**: Queue update for after task completion
-- Zero interruption to scheduled workflows
 
 #### Codebase Modularization 🏗️
 
