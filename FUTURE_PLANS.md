@@ -1,77 +1,104 @@
-# c4n-AutoLauncher - Future Plans
+# c4n-AutoLauncher - Roadmap & Future Plans
 
-## Planned Features
-
-### Smart Auto-Update Installation 🚀
-**Priority**: High  
-**Complexity**: Medium
-
-**Description**:  
-Implement intelligent automatic update installation that respects user's task schedule.
-
-**How It Works**:
-1. Application checks for updates every 2 minutes (ETag-based, bandwidth-efficient)
-2. When update is available:
-   - Check next scheduled task time
-   - If next task is **>30 minutes away**: Install update automatically
-   - If next task is **<30 minutes away**: Wait until task completes, then install
-
-**Benefits**:
-- Zero interruption to scheduled workflows
-- Near real-time updates without user intervention
-- Smart awareness of application usage patterns
-
-**Technical Requirements**:
-- Integration with task scheduler module
-- Time comparison logic (current time + 30 min vs next task time)
-- Post-task-completion hook for delayed installations
-- User notification system for pending updates
-
-**Implementation Steps**:
-1. Add method to query next scheduled task time from `TaskScheduler`
-2. Create smart decision engine in `UpdateManager`
-3. Implement delayed installation queue
-4. Add post-task completion trigger
-5. Create user notifications for install status
-
-**Estimated Effort**: 4-6 hours
+> **Current Version**: v1.8.4 | [View Changelog](RELEASE_NOTES.md)
 
 ---
 
-## Other Ideas
+## ✅ Recently Shipped
 
-### Task Execution Analytics 📊
-- Track which tasks run successfully vs fail
-- Show execution history and patterns
-- Identify frequently failed tasks for troubleshooting
+### v1.8.0 - Addon System
 
-### Cloud Sync Integration ☁️
-- Sync task configurations across multiple machines
-- Backup/restore task settings
-- Share task templates with other users
+- **Plugin Architecture**: Extensible system for community addons
+- **Beacon Sentinel Addon**: Monitors game launchers for update dialogs
+- **Dedicated Addons UI**: Enable/disable addons from the sidebar
 
-### Advanced Scheduling Options ⏰
-- Conditional triggers (e.g., "run when specific program closes")
+### v1.7.0 - MVC Architecture
+
+- **Clean Separation**: UI (View) decoupled from Logic (Controller)
+- **Atomic Writes**: Safe save mechanism prevents data corruption
+- **Zombie Process Cleanup**: Background collector for orphaned processes
+
+### v1.6.0 - Native OCR Detection
+
+- **Windows OCR**: Reads text inside DirectX/OpenGL game windows
+- **Smart Restart**: Auto-restarts stuck applications with unresponsive dialogs
+
+---
+
+## 🚧 Planned Features
+
+### Priority 1: Core Improvements
+
+#### Smart Auto-Update Installation 🚀
+
+**Status**: Ready for Development | **Effort**: 4-6 hours
+
+Intelligently install updates only when no tasks are imminent.
+
+- Check next scheduled task time before updating
+- If next task is **>30 min away**: Install immediately
+- If next task is **<30 min away**: Queue update for after task completion
+- Zero interruption to scheduled workflows
+
+#### Codebase Modularization 🏗️
+
+**Status**: Technical Debt | **Effort**: 4+ hours
+
+Break down monolithic files for maintainability:
+
+- `scheduler.py` (50KB) → Split into core, hooks, UI bridge
+- `settings_interface.py` (50KB) → Extract setting groups
+- `autolauncher.py` (60KB) → Separate UI components
+
+---
+
+### Priority 2: Feature Enhancements
+
+#### Task Execution Analytics 📊
+
+- Track task success/failure history
+- Show execution patterns and trends
+- Identify frequently failing tasks
+
+#### Beacon Sentinel UI Enhancement 🔍
+
+- Always-visible indicator in toolbar (grayed when inactive, cyan when active)
+- Settings toggle to enable/disable entirely
+- Configurable monitoring duration
+
+#### Advanced Scheduling ⏰
+
+- Conditional triggers ("run when specific program closes")
 - Day-of-week specific schedules
 - Holiday/vacation mode to pause all tasks
 
-### Performance Monitoring 🔍
+---
+
+### Priority 3: Future Vision
+
+#### Cloud Sync ☁️
+
+- Sync task configurations across machines
+- Backup/restore task settings
+- Share task templates with other users
+
+#### Task Chaining 🔗
+
+- Run Task B automatically after Task A finishes
+- Define dependencies between tasks
+
+#### Performance Monitoring 📈
+
 - Show resource usage of launched programs
 - Alert if programs consume excessive resources
-- Auto-kill programs that exceed thresholds
-
-### Update Detector UI Enhancement 🔍
-- Make indicator **always visible** in toolbar
-- Show **grayed out** when inactive, **blinking cyan** when active
-- Optional: Add settings toggle to enable/disable Update Detector entirely
-- Optional: Configurable monitoring duration (currently 5 minutes)
+- Auto-kill programs exceeding thresholds
 
 ---
 
 ## Contributing
 
-Have ideas for features? Open an issue on [GitHub](https://github.com/Code4neverCompany/Code4never-AutoLauncher_AlphaVersion/issues) with the `enhancement` label!
+Have ideas for features? Open an issue on [GitHub](https://github.com/Code4neverCompany/Code4never-AutoLauncher/issues) with the `enhancement` label!
 
 ---
 
-© 2025 4never Company. All rights reserved.
+© 2026 4never Company. All rights reserved.
