@@ -60,7 +60,8 @@ The v1.8.0 "Addon System Update" was a significant architectural win, introducin
 
 1. ✅ **P0 Complete**: README updated, dependencies pinned.
 2. ✅ **P1 Complete**: Codebase cleanup done (~2.5GB freed), Smoke Test created.
-3. 🚧 **P2 Pending**: Modularize the codebase incrementally during future feature work.
+3. ✅ **P2 Smart Auto-Update**: Implemented task-aware update deferral.
+4. 🚧 **P2 Pending**: Modularize the codebase incrementally during future feature work.
 
 ---
 
