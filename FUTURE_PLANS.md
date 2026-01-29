@@ -76,12 +76,6 @@ Break down monolithic files for maintainability:
 
 ### Priority 3: Future Vision
 
-#### Cloud Sync ☁️
-
-- Sync task configurations across machines
-- Backup/restore task settings
-- Share task templates with other users
-
 #### Task Chaining 🔗
 
 - Run Task B automatically after Task A finishes
