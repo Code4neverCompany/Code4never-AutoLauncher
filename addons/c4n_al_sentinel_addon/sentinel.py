@@ -43,10 +43,25 @@ class SentinelAddon(IAutolauncherAddon):
         self.logic = SentinelLogic()
         self.indicator = SentinelIndicator()
         
-        # State tracking
+        # Monitor State
         self.active_monitors: Dict[int, bool] = {} # task_id -> is_running
         self.retry_counts: Dict[int, int] = {} # task_id -> retries
         self.dialog_persistence: Dict[int, int] = {} # task_id -> persistence_count
+
+        # Visual Detection State
+        self.detector = None
+        self._visual_scanning_deadline = 0.0
+        self._is_visual_scanning = False
+        self._visual_thread = None
+        self.last_visual_fix_time = 0.0 # Timestamp of last successful visual click
+        
+        # Use simple try-import for optional dependencies
+        try:
+            from .visual_detector import VisualDetector
+            self.VisualDetectorClass = VisualDetector
+        except ImportError as e:
+            self.VisualDetectorClass = None
+            logger.warning(f"Sentinel: VisualDetector dependencies not found. Visual features disabled. Error: {e}")
 
     def get_indicator_widget(self) -> Optional[QWidget]:
         return self.indicator
@@ -69,6 +84,7 @@ class SentinelAddon(IAutolauncherAddon):
         # Show indicator
         self.indicator.set_active(True, task_name)
         
+        # Start Monitoring
         thread = threading.Thread(
             target=self._monitor_loop,
             args=(task_id, task_name, pid, task_data, process),
@@ -78,16 +94,98 @@ class SentinelAddon(IAutolauncherAddon):
         thread.start()
         logger.info(f"Sentinel: Monitoring started for '{task_name}' (PID: {pid})")
 
+        # Start Visual Scanner (if supported)
+        if self.VisualDetectorClass:
+            self._start_visual_scan(task_name)
+
     def on_task_end(self, task_id: int):
         """Stop monitoring when task ends."""
+        self._is_visual_scanning = False # Stop visual too
+        
         if task_id in self.active_monitors:
             self.active_monitors[task_id] = False # Flag loop to stop
             logger.debug(f"Sentinel: Stopping monitor for task ID {task_id}")
             
         # Hide indicator if no more active monitors
-        # We need to check if ANY monitor is true
         if not any(self.active_monitors.values()):
             self.indicator.set_active(False)
+
+    def _start_visual_scan(self, task_name: str):
+        """Start the visual scanning loop for 2 minutes."""
+        self._visual_scanning_deadline = time.time() + (2 * 60) # 2 minutes
+        self._is_visual_scanning = True
+        self.indicator.set_active(True, task_name) # Ensure active
+        
+        if not self.detector and self.VisualDetectorClass:
+            try:
+                self.detector = self.VisualDetectorClass()
+            except Exception as e:
+                logger.error(f"Sentinel: Failed to init VisualDetector: {e}")
+                
+        if self.detector:
+            self._visual_thread = threading.Thread(
+                target=self._visual_worker_loop,
+                daemon=True,
+                name="SentinelVisual"
+            )
+            self._visual_thread.start()
+
+    def _visual_worker_loop(self):
+        """Visual detection worker loop."""
+        import os
+        image_name = "update_btn.png"
+        image_path = os.path.join(os.path.dirname(__file__), image_name)
+        
+        if not os.path.exists(image_path):
+            logger.warning(f"Sentinel: Reference image not found at {image_path}")
+            return
+            
+        logger.info("Sentinel: Visual Clicker started.")
+
+        try:
+            from pywinauto import Desktop
+        except:
+            return
+
+        while self._is_visual_scanning:
+            if time.time() > self._visual_scanning_deadline:
+                logger.info("Sentinel: Visual scan timeout.")
+                self._is_visual_scanning = False
+                break
+                
+            try:
+                # Find Candidate Windows (Games/Launchers)
+                try:
+                    windows = Desktop(backend="win32").windows()
+                    for w in windows:
+                        t = w.window_text()
+                        # Simple keyword filtering for potential games or known launchers
+                        # This avoids scanning every single window on the desktop
+                        candidates = ["Wuthering", "Genshin", "Star Rail", "Launcher", "Client", "Fotoanzeige", "Screenshot"]
+                        
+                        if any(keyword in t for keyword in candidates):
+                            target_hwnd = w.handle
+                            match = self.detector.scan_for_template(target_hwnd, image_path, confidence=0.8)
+                            if match:
+                                logger.info(f"Sentinel: Visual match in '{t}'. Focusing and Clicking...")
+                                try:
+                                    w.set_focus()
+                                    time.sleep(0.5)
+                                except Exception as e:
+                                    logger.warning(f"Sentinel: Failed to focus window: {e}")
+                                
+                                if self.detector.click_at(*match):
+                                    self.last_visual_fix_time = time.time()
+                                    logger.info(f"Sentinel: Click registered. Expecting process restart.")
+                                
+                                time.sleep(2.0)
+                except Exception:
+                    pass
+
+            except Exception as e:
+                logger.error(f"Sentinel: Visual loop error: {e}")
+            
+            time.sleep(5.0)
 
     def _monitor_loop(self, task_id: int, task_name: str, initial_pid: int, task_data: Dict, process_obj: Any):
         """
@@ -96,7 +194,7 @@ class SentinelAddon(IAutolauncherAddon):
         """
         start_time = time.time()
         loop_count = 0
-        duration = 300 # 5 minutes
+        duration = 120 # 2 minutes (User Requested Watchdog limit)
         
         # Initial wait
         time.sleep(2)
@@ -136,6 +234,13 @@ class SentinelAddon(IAutolauncherAddon):
                 current_living_pids.extend(list(new_children))
             
             if not current_living_pids:
+                # Check if this exit was expected due to a visual fix (Update Restart)
+                if time.time() - self.last_visual_fix_time < 60:
+                    logger.info(f"Sentinel: Process finished after visual fix. Triggering restart for '{task_name}'.")
+                    time.sleep(5) # Allow meaningful exit
+                    self._handle_stuck_task(task_id, task_name, task_data)
+                    return
+
                 logger.debug(f"Sentinel: All tracked processes finished for '{task_name}'.")
                 break
             

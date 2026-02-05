@@ -426,7 +426,7 @@ class UpdateManager:
 
     def download_update(self, asset: Dict, progress_callback: Optional[Callable[[int, int], None]] = None) -> Optional[str]:
         """
-        Download an update asset.
+        Download an update asset using Python requests.
         
         Args:
             asset: Asset dictionary from GitHub API
@@ -445,7 +445,7 @@ class UpdateManager:
                 return None
             
             logger.info("=" * 60)
-            logger.info("STARTING UPDATE DOWNLOAD")
+            logger.info("STARTING UPDATE DOWNLOAD (Native)")
             logger.info("=" * 60)
             logger.info(f"Asset Name: {file_name}")
             logger.info(f"Expected Size: {file_size:,} bytes ({file_size / (1024*1024):.2f} MB)")
@@ -456,85 +456,38 @@ class UpdateManager:
             download_path = os.path.join(temp_dir, file_name)
             
             logger.info(f"Download Destination: {download_path}")
-            logger.info(f"Temporary Directory: {temp_dir}")
-            logger.info("Starting download via PowerShell script...")
             
-            # Create a temporary PowerShell script
-            # This avoids command-line quoting hell and is more robust
-            ps_script_path = os.path.join(temp_dir, "download_update.ps1")
-            ps_script_content = f"""
-$ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-try {{
-    Invoke-WebRequest -Uri '{download_url}' -OutFile '{download_path}' -UserAgent 'AutoLauncher-Updater'
-    exit 0
-}} catch {{
-    Write-Error $_.Exception.Message
-    exit 1
-}}
-"""
-            try:
-                with open(ps_script_path, 'w') as f:
-                    f.write(ps_script_content)
-                    
-                # Run the PowerShell script
-                ps_command = [
-                    "powershell",
-                    "-NoProfile",
-                    "-ExecutionPolicy", "Bypass",
-                    "-File", ps_script_path
-                ]
+            # Use requests for download
+            headers = {'User-Agent': 'AutoLauncher-Updater'}
+            with requests.get(download_url, headers=headers, stream=True, timeout=30) as r:
+                r.raise_for_status()
+                total_length = int(r.headers.get('content-length', 0)) or file_size
                 
-                result = subprocess.run(
-                    ps_command,
-                    capture_output=True,
-                    text=True,
-                    timeout=300
-                )
-                
-                if result.returncode != 0:
-                    logger.error(f"PowerShell script failed with code {result.returncode}")
-                    logger.error(f"Stderr: {result.stderr}")
-                    logger.error(f"Stdout: {result.stdout}")
-                    return None
-                    
-                logger.info("PowerShell download script completed successfully")
-                
-                # Verify download completed
-                if not os.path.exists(download_path):
-                    logger.error(f"Download file does not exist after download: {download_path}")
-                    return None
-                    
-                actual_size = os.path.getsize(download_path)
-                logger.info("=" * 60)
-                logger.info("DOWNLOAD COMPLETED")
-                logger.info(f"Downloaded: {actual_size:,} bytes ({actual_size / (1024*1024):.2f} MB)")
-                logger.info(f"Expected: {file_size:,} bytes")
-                
-                # Critical check: If file is 0 bytes, something went wrong
-                if actual_size == 0:
-                    logger.error("DOWNLOAD FAILED: File is 0 bytes!")
-                    return None
-                
-            except subprocess.TimeoutExpired:
-                logger.error("Download timed out after 300 seconds")
-                return None
-            except Exception as e:
-                logger.error(f"Failed to execute PowerShell download script: {e}")
-                return None
-            finally:
-                # Clean up script
-                if os.path.exists(ps_script_path):
-                    try:
-                        os.remove(ps_script_path)
-                    except:
-                        pass
+                with open(download_path, 'wb') as f:
+                    downloaded = 0
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            if progress_callback:
+                                progress_callback(downloaded, total_length)
             
-            logger.info(f"Download saved to: {download_path}")
+            # Verify download
+            if not os.path.exists(download_path):
+                logger.error("Download file missing after stream completion.")
+                return None
+                
+            actual_size = os.path.getsize(download_path)
             logger.info("=" * 60)
-            return download_path
+            logger.info("DOWNLOAD COMPLETED")
+            logger.info(f"Downloaded: {actual_size:,} bytes")
             
+            if actual_size == 0:
+                logger.error("DOWNLOAD FAILED: File is 0 bytes")
+                return None
+                
+            return download_path
+
         except Exception as e:
             logger.error("=" * 60)
             logger.error("DOWNLOAD FAILED")

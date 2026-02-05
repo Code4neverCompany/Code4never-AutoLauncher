@@ -1,8 +1,18 @@
 {
-    "version": "1.8.5",
+    "version": "1.9.0",
     "release_date": "2026-01-29",
-    "description": "v1.8.5 - Codebase Modularization",
+    "description": "AutoLauncher v1.9.0 - Addon System & Visual Clicker",
     "changelog": [
+        {
+            "version": "1.9.0",
+            "date": "2026-01-29",
+            "changes": [
+                "ARCHITECTURE: New Plugin/Addon System - Support for self-contained addons with local dependencies",
+                "ADDON: 'Visual Clicker' - New addon for automated confirmation clicking in DirectX/Vulkan games",
+                "ADDON: 'Beacon Sentinel' - Re-implemented Stuck/Update Detector using the new Addon API",
+                "UI: 2-Minute Scan Timeout & blinking indicator for Visual Clicker"
+            ]
+        },
         {
             "version": "1.8.5",
             "date": "2026-01-29",

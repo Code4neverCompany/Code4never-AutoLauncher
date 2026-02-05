@@ -31,6 +31,12 @@ for translation_file in glob.glob('translations/**/*', recursive=True):
         # Source path, destination directory
         added_files.append((translation_file, os.path.dirname(translation_file)))
 
+# Add all addons (including local libraries and assets)
+for addon_file in glob.glob('addons/**/*', recursive=True):
+    if os.path.isfile(addon_file):
+        # Source path, destination directory
+        added_files.append((addon_file, os.path.dirname(addon_file)))
+
 # NOTE: data/*.json files are NO LONGER bundled - user data now stored in AppData
 # The app will create tasks.json and settings.json in %APPDATA%\c4n-AutoLauncher\ on first run
 
@@ -62,7 +68,11 @@ hiddenimports = [
     'six',
     'uuid',
     'pywinauto',
-] + collect_submodules('pywinauto')
+    'cv2',
+    'numpy',
+    'numpy.core.multiarray',
+    'mss',
+] + collect_submodules('pywinauto') + collect_submodules('mss') + collect_submodules('numpy')
 
 a = Analysis(
     ['autolauncher.py'],

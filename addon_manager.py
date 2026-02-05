@@ -62,6 +62,14 @@ class AddonManager:
         We will look for a class that inherits from IAutolauncherAddon in the package.
         """
         try:
+            # Support for Self-Contained Addons (Vendor Bundle Pattern)
+            # If the addon has a 'lib' directory, inject it into sys.path
+            addon_path = os.path.join(self.addon_dir, package_name)
+            lib_path = os.path.join(addon_path, "lib")
+            if os.path.exists(lib_path) and lib_path not in sys.path:
+                logger.info(f"Injecting local lib path for {package_name}: {lib_path}")
+                sys.path.insert(0, lib_path)
+
             # Import the package: addons.package_name
             module_name = f"addons.{package_name}"
             
